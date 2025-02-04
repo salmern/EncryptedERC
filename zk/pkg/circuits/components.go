@@ -26,6 +26,9 @@ func CheckRegistrationPublicKey(api frontend.API, bj *babyjub.BjWrapper, sender 
 CheckBalance checks if the sender's balance is a well-formed ElGamal ciphertext by decryption
 */
 func CheckBalance(api frontend.API, bj *babyjub.BjWrapper, sender Sender) {
+	// Add range check for balance
+	api.AssertIsLessOrEqual(sender.Balance, bj.BasePointOrder)
+
 	decSenderBalanceP := bj.ElGamalDecrypt([2]frontend.Variable{sender.BalanceEGCT.C1.X, sender.BalanceEGCT.C1.Y}, [2]frontend.Variable{sender.BalanceEGCT.C2.X, sender.BalanceEGCT.C2.Y}, sender.PrivateKey)
 	givenSenderBalanceP := bj.MulWithBasePoint(sender.Balance)
 	bj.AssertPoint(givenSenderBalanceP, decSenderBalanceP.X, decSenderBalanceP.Y)
@@ -35,6 +38,9 @@ func CheckBalance(api frontend.API, bj *babyjub.BjWrapper, sender Sender) {
 CheckPositiveValue verifies if the sender's value is the encryption of the given value by decryption
 */
 func CheckPositiveValue(api frontend.API, bj *babyjub.BjWrapper, sender Sender, value frontend.Variable) {
+	// Add range check for value
+	api.AssertIsLessOrEqual(value, bj.BasePointOrder)
+
 	positiveValueP := bj.MulWithBasePoint(value)
 	decSenderValueP := bj.ElGamalDecrypt([2]frontend.Variable{sender.ValueEGCT.C1.X, sender.ValueEGCT.C1.Y}, [2]frontend.Variable{sender.ValueEGCT.C2.X, sender.ValueEGCT.C2.Y}, sender.PrivateKey)
 	bj.AssertPoint(positiveValueP, decSenderValueP.X, decSenderValueP.Y)
