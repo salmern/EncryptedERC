@@ -8,6 +8,7 @@ import {EncryptedUserBalances} from "./EncryptedUserBalances.sol";
 
 // libraries
 import {BabyJubJub} from "./libraries/BabyJubJub.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // types
 import {CreateEncryptedERCParams, Point, EGCT, EncryptedBalance, AmountPCT} from "./types/Types.sol";
@@ -484,6 +485,10 @@ contract EncryptedERC is TokenTracker, Ownable, EncryptedUserBalances {
             revert InvalidOperation();
         }
 
+        if (isTokenBlacklisted(_tokenAddress)) {
+            revert TokenBlacklisted(_tokenAddress);
+        }
+
         IERC20 token = IERC20(_tokenAddress);
         uint256 dust;
         uint256 tokenId;
@@ -495,12 +500,12 @@ contract EncryptedERC is TokenTracker, Ownable, EncryptedUserBalances {
         }
 
         // this function reverts if the transfer fails
-        token.transferFrom(to, address(this), _amount);
+        SafeERC20.safeTransferFrom(token, to, address(this), _amount);
 
         (dust, tokenId) = _convertFrom(to, _amount, _tokenAddress, _amountPCT);
 
         // transfer the dust back to the user
-        token.transfer(to, dust);
+        SafeERC20.safeTransfer(token, to, dust);
 
         emit Deposit(to, _amount, dust, tokenId);
     }
@@ -717,6 +722,6 @@ contract EncryptedERC is TokenTracker, Ownable, EncryptedUserBalances {
 
         // transfer the token to the user
         IERC20 token = IERC20(_tokenAddress);
-        token.transfer(_to, value);
+        SafeERC20.safeTransfer(token, _to, value);
     }
 }
