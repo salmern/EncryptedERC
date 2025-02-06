@@ -50,6 +50,9 @@ func CheckPositiveValue(api frontend.API, bj *babyjub.BjWrapper, sender Sender, 
 CheckValue verifies if the receiver's value is the encryption of the given value by re-encrypting it and comparing the result with the given ciphertext
 */
 func CheckValue(api frontend.API, bj *babyjub.BjWrapper, receiver Receiver, value frontend.Variable) {
+	// Add range check for value
+	api.AssertIsLessOrEqual(value, bj.BasePointOrder)
+
 	reEncC1, reEncC2 := bj.ElGamalEncrypt(receiver.PublicKey.P, bj.MulWithBasePoint(value), receiver.ValueRandom.R)
 	bj.AssertPoint(receiver.ValueEGCT.C1, reEncC1.X, reEncC1.Y)
 	bj.AssertPoint(receiver.ValueEGCT.C2, reEncC2.X, reEncC2.Y)
