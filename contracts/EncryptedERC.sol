@@ -131,9 +131,17 @@ contract EncryptedERC is TokenTracker, Ownable, EncryptedUserBalances {
      * @param user Address of the user
      * @param amount Amount of the withdrawal
      * @param tokenId Token ID
+     * @param auditorPCT Auditor PCT
+     * @param auditorAddress Auditor Address
      * @dev Emitted when a private withdrawal occurs
      */
-    event Withdraw(address indexed user, uint256 amount, uint256 tokenId);
+    event Withdraw(
+        address indexed user,
+        uint256 amount,
+        uint256 tokenId,
+        uint256[7] auditorPCT,
+        address indexed auditorAddress
+    );
 
     ///////////////////////////////////////////////////
     ///                   Public                    ///
@@ -563,7 +571,7 @@ contract EncryptedERC is TokenTracker, Ownable, EncryptedUserBalances {
                 auditorPCT[i] = input[8 + i];
             }
 
-            emit Withdraw(from, _amount, _tokenId);
+            emit Withdraw(from, _amount, _tokenId, auditorPCT, auditor);
         }
     }
 
