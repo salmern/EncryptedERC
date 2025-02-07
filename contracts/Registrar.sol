@@ -19,6 +19,11 @@ contract Registrar {
      */
     mapping(address userAddress => Point userPublicKey) public userPublicKeys;
 
+    /**
+     * @dev Store all registration hashes
+     */
+    uint256[] public registrationHashes;
+
     constructor(address _registrationVerifier) {
         registrationVerifier = IRegistrationVerifier(_registrationVerifier);
         // setting burn user to the identity point (0, 1)
@@ -38,26 +43,38 @@ contract Registrar {
      */
     function register(
         uint256[8] calldata proof,
-        uint256[2] calldata input
+        uint256[4] calldata input
     ) external {
         address account = msg.sender;
 
         registrationVerifier.verifyProof(proof, input);
 
+        // Check if registration hash already exists
+        uint256 registrationHash = input[3];
+        for (uint256 i = 0; i < registrationHashes.length; i++) {
+            if (registrationHashes[i] == registrationHash) {
+                revert UserAlreadyRegistered();
+            }
+        }
+
         require(!isUserRegistered(account), "UserAlreadyRegistered");
 
-        _register(account, Point({X: input[0], Y: input[1]}));
+        _register(account, Point({X: input[0], Y: input[1]}), registrationHash);
     }
 
     /**
-     *
      * @param _user Address of the user
      * @param _publicKey Public key of the user
-     *
+     * @param _registrationHash Registration hash
      * @dev Internal function for setting user public key
      */
-    function _register(address _user, Point memory _publicKey) internal {
+    function _register(
+        address _user,
+        Point memory _publicKey,
+        uint256 _registrationHash
+    ) internal {
         userPublicKeys[_user] = _publicKey;
+        registrationHashes.push(_registrationHash);
         emit Register(_user, _publicKey);
     }
 
@@ -81,5 +98,14 @@ contract Registrar {
         address _user
     ) public view returns (uint256[2] memory publicKey) {
         return [userPublicKeys[_user].X, userPublicKeys[_user].Y];
+    }
+
+    // Optional: View function to get all registration hashes
+    function getAllRegistrationHashes()
+        external
+        view
+        returns (uint256[] memory)
+    {
+        return registrationHashes;
     }
 }

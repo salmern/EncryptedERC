@@ -28,8 +28,10 @@ type Receiver struct {
 }
 
 type RegistrationSender struct {
-	PrivateKey frontend.Variable
-	PublicKey  PublicKey
+	PrivateKey       frontend.Variable
+	PublicKey        PublicKey
+	ChainID          frontend.Variable `gnark:",public"`
+	RegistrationHash frontend.Variable `gnark:",public"`
 }
 
 type Auditor struct {

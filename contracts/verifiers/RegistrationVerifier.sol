@@ -59,6 +59,7 @@ contract RegistrationVerifier {
 
     // Groth16 alpha point in G1
     uint256 constant ALPHA_X =
+<<<<<<< HEAD
         2613032064737558722932193614280346417884756921102642783490124937229568923453;
     uint256 constant ALPHA_Y =
         19255013457043068338430796967793460158909318525814623477260155678788156714082;
@@ -106,6 +107,63 @@ contract RegistrationVerifier {
         11835721834128825667716350578557824442881783722448641073074416979088985711451;
     uint256 constant PUB_1_Y =
         10581336830891256385148925027558941270380022006922123047341456293084743704725;
+=======
+        17189209815779953728347071938801405989775878222135862881992169424500291035083;
+    uint256 constant ALPHA_Y =
+        5760933679345442553409887113666260379627832761699274219363314243778545051488;
+
+    // Groth16 beta point in G2 in powers of i
+    uint256 constant BETA_NEG_X_0 =
+        9238551816365013277056714253281675614304808600435711912212643269597478931461;
+    uint256 constant BETA_NEG_X_1 =
+        14601085489243561465068768459256875820231105269231836243160638657036429222127;
+    uint256 constant BETA_NEG_Y_0 =
+        15625319854107749280458489022567491067716308506756905287199440998097550872621;
+    uint256 constant BETA_NEG_Y_1 =
+        19433988330738596375200510702993021445070243739150822148807708186951730327209;
+
+    // Groth16 gamma point in G2 in powers of i
+    uint256 constant GAMMA_NEG_X_0 =
+        9730090038134458434146055089305620583800998872162138950234678126461452100035;
+    uint256 constant GAMMA_NEG_X_1 =
+        5532242904952420798851654633543153998889367857066253589379035670616571598595;
+    uint256 constant GAMMA_NEG_Y_0 =
+        9879550978090036417429009906827745042746303375731412717408811922841726374802;
+    uint256 constant GAMMA_NEG_Y_1 =
+        8782741962601193598943311383705856957900281500170879837772272522738269782900;
+
+    // Groth16 delta point in G2 in powers of i
+    uint256 constant DELTA_NEG_X_0 =
+        15890285458518432676281844515204872698378144314610098277324243744498144216100;
+    uint256 constant DELTA_NEG_X_1 =
+        9812064104528968155148245995993362462855434325111786305295563755826708470978;
+    uint256 constant DELTA_NEG_Y_0 =
+        18074850402563803031038018706978876843698933556201215978906536489924833992487;
+    uint256 constant DELTA_NEG_Y_1 =
+        14985417411293199325327146883390757024637027562505750228366530813374462216689;
+
+    // Constant and public input points
+    uint256 constant CONSTANT_X =
+        18552047867942920276533264289780924786678552001938451466298525201353843767972;
+    uint256 constant CONSTANT_Y =
+        21682069132633987601116660458453418960835685327776036568338532107332677480575;
+    uint256 constant PUB_0_X =
+        11201289099420325128269722113021015105256856840997439507001136744542415661770;
+    uint256 constant PUB_0_Y =
+        7671058450281370109149841977191012234780661731452870809668050599149086465057;
+    uint256 constant PUB_1_X =
+        4716579420592502787177610317477467916311950793523929099120333960206387531954;
+    uint256 constant PUB_1_Y =
+        807735592613162116337306961213680632055593685948600586286841177522705903875;
+    uint256 constant PUB_2_X =
+        3859915866060366316015305037041427027143405349621005524317351429497478122404;
+    uint256 constant PUB_2_Y =
+        20798688008891166513289908588636580732302367728280103663782362671499657839872;
+    uint256 constant PUB_3_X =
+        19952387069833066325422040532708578460283963637489181589826383005224171353261;
+    uint256 constant PUB_3_Y =
+        9333777747981183634241451337582984913539071637987619159644868595469060349064;
+>>>>>>> e588f32 (feat: chainId and registration hash added to register circuit)
 
     /// Negation in Fp.
     /// @notice Returns a number x such that a + x = 0 in Fp.
@@ -412,7 +470,7 @@ contract RegistrationVerifier {
     /// @return x The X coordinate of the resulting G1 point.
     /// @return y The Y coordinate of the resulting G1 point.
     function publicInputMSM(
-        uint256[2] calldata input
+        uint256[4] calldata input
     ) internal view returns (uint256 x, uint256 y) {
         // Note: The ECMUL precompile does not reject unreduced values, so we check this.
         // Note: Unrolling this loop does not cost much extra in code-size, the bulk of the
@@ -445,6 +503,32 @@ contract RegistrationVerifier {
             mstore(g, PUB_1_X)
             mstore(add(g, 0x20), PUB_1_Y)
             s := calldataload(add(input, 32))
+            mstore(add(g, 0x40), s)
+            success := and(success, lt(s, R))
+            success := and(
+                success,
+                staticcall(gas(), PRECOMPILE_MUL, g, 0x60, g, 0x40)
+            )
+            success := and(
+                success,
+                staticcall(gas(), PRECOMPILE_ADD, f, 0x80, f, 0x40)
+            )
+            mstore(g, PUB_2_X)
+            mstore(add(g, 0x20), PUB_2_Y)
+            s := calldataload(add(input, 64))
+            mstore(add(g, 0x40), s)
+            success := and(success, lt(s, R))
+            success := and(
+                success,
+                staticcall(gas(), PRECOMPILE_MUL, g, 0x60, g, 0x40)
+            )
+            success := and(
+                success,
+                staticcall(gas(), PRECOMPILE_ADD, f, 0x80, f, 0x40)
+            )
+            mstore(g, PUB_3_X)
+            mstore(add(g, 0x20), PUB_3_Y)
+            s := calldataload(add(input, 96))
             mstore(add(g, 0x40), s)
             success := and(success, lt(s, R))
             success := and(
@@ -497,7 +581,7 @@ contract RegistrationVerifier {
     /// Elements must be reduced.
     function verifyCompressedProof(
         uint256[4] calldata compressedProof,
-        uint256[2] calldata input
+        uint256[4] calldata input
     ) public view {
         uint256[24] memory pairings;
 
@@ -576,7 +660,7 @@ contract RegistrationVerifier {
     /// Elements must be reduced.
     function verifyProof(
         uint256[8] calldata proof,
-        uint256[2] calldata input
+        uint256[4] calldata input
     ) public view {
         (uint256 x, uint256 y) = publicInputMSM(input);
 
