@@ -52,6 +52,14 @@ func poseidonDecrypt(
 	// Check the last ciphertext element
 	api.AssertIsEqual(cipherText[decryptedLength], strategies[n][1])
 
+	// Verify padding bytes are zero when message length is not multiple of 3
+	remainder := l % 3
+	if remainder != 0 {
+		for i := l; i < decryptedLength; i++ {
+			api.AssertIsEqual(out[i], 0)
+		}
+	}
+
 	return out[:l]
 }
 
