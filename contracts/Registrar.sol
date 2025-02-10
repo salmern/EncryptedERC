@@ -22,7 +22,7 @@ contract Registrar {
     /**
      * @dev Store all registration hashes
      */
-    uint256[] public registrationHashes;
+    mapping(uint256 registrationHash => bool isRegistered) public isRegistered;
 
     constructor(address _registrationVerifier) {
         registrationVerifier = IRegistrationVerifier(_registrationVerifier);
@@ -49,15 +49,11 @@ contract Registrar {
 
         registrationVerifier.verifyProof(proof, input);
 
-        // Check if registration hash already exists
         uint256 registrationHash = input[3];
-        for (uint256 i = 0; i < registrationHashes.length; i++) {
-            if (registrationHashes[i] == registrationHash) {
-                revert UserAlreadyRegistered();
-            }
-        }
 
-        require(!isUserRegistered(account), "UserAlreadyRegistered");
+        if (isRegistered[registrationHash] && isUserRegistered(account)) {
+            revert UserAlreadyRegistered();
+        }
 
         _register(account, Point({X: input[0], Y: input[1]}), registrationHash);
     }
@@ -74,7 +70,7 @@ contract Registrar {
         uint256 _registrationHash
     ) internal {
         userPublicKeys[_user] = _publicKey;
-        registrationHashes.push(_registrationHash);
+        isRegistered[_registrationHash] = true;
         emit Register(_user, _publicKey);
     }
 
@@ -98,14 +94,5 @@ contract Registrar {
         address _user
     ) public view returns (uint256[2] memory publicKey) {
         return [userPublicKeys[_user].X, userPublicKeys[_user].Y];
-    }
-
-    // Optional: View function to get all registration hashes
-    function getAllRegistrationHashes()
-        external
-        view
-        returns (uint256[] memory)
-    {
-        return registrationHashes;
     }
 }
