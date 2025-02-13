@@ -5,7 +5,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Point} from "./types/Types.sol";
 import {IEncryptedERC} from "./interfaces/IEncryptedERC.sol";
 import {IRegistrationVerifier} from "./interfaces/verifiers/IRegistrationVerifier.sol";
-import {UserAlreadyRegistered} from "./errors/Errors.sol";
+import {UserAlreadyRegistered, InvalidChainId} from "./errors/Errors.sol";
 
 contract Registrar {
     address public constant BURN_USER =
@@ -47,9 +47,13 @@ contract Registrar {
     ) external {
         address account = msg.sender;
 
-        registrationVerifier.verifyProof(proof, input);
+        if (block.chainid != input[2]) {
+            revert InvalidChainId();
+        }
 
         uint256 registrationHash = input[3];
+
+        registrationVerifier.verifyProof(proof, input);
 
         if (isRegistered[registrationHash] && isUserRegistered(account)) {
             revert UserAlreadyRegistered();
