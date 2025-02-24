@@ -24,7 +24,7 @@ import {ITransferVerifier} from "./interfaces/verifiers/ITransferVerifier.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
-contract EncryptedERC is TokenTracker, Ownable, EncryptedUserBalances {
+contract EncryptedERC is TokenTracker, EncryptedUserBalances {
     // registrar contract
     IRegistrar public registrar;
 
@@ -46,7 +46,7 @@ contract EncryptedERC is TokenTracker, Ownable, EncryptedUserBalances {
 
     constructor(
         CreateEncryptedERCParams memory params
-    ) TokenTracker(params._isConverter) Ownable(msg.sender) {
+    ) TokenTracker(params._isConverter) {
         registrar = IRegistrar(params._registrar);
 
         // if contract is not a converter, then set the name and symbol
