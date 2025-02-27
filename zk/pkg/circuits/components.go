@@ -105,7 +105,7 @@ func CheckPCTAuditor(api frontend.API, bj *babyjub.BjWrapper, auditor Auditor, v
 
 func CheckRegistrationHash(api frontend.API, sender RegistrationSender) {
 	pos := poseidon.NewPoseidonHash(api)
-	hash := poseidon.Hash2(pos, sender.ChainID, sender.PrivateKey)
+	hash := poseidon.Hash3(pos, sender.ChainID, sender.PrivateKey, sender.Address)
 	api.AssertIsEqual(hash, sender.RegistrationHash)
 }
 

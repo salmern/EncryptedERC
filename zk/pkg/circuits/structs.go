@@ -30,6 +30,7 @@ type Receiver struct {
 type RegistrationSender struct {
 	PrivateKey       frontend.Variable
 	PublicKey        PublicKey
+	Address          frontend.Variable `gnark:",public"`
 	ChainID          frontend.Variable `gnark:",public"`
 	RegistrationHash frontend.Variable `gnark:",public"`
 }

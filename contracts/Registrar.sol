@@ -5,7 +5,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Point} from "./types/Types.sol";
 import {IEncryptedERC} from "./interfaces/IEncryptedERC.sol";
 import {IRegistrationVerifier} from "./interfaces/verifiers/IRegistrationVerifier.sol";
-import {UserAlreadyRegistered, InvalidChainId} from "./errors/Errors.sol";
+import {UserAlreadyRegistered, InvalidChainId, InvalidSender} from "./errors/Errors.sol";
 
 contract Registrar {
     address public constant BURN_USER =
@@ -43,15 +43,19 @@ contract Registrar {
      */
     function register(
         uint256[8] calldata proof,
-        uint256[4] calldata input
+        uint256[5] calldata input
     ) external {
-        address account = msg.sender;
+        address account = address(uint160(input[2]));
 
-        if (block.chainid != input[2]) {
+        if (msg.sender != account) {
+            revert InvalidSender();
+        }
+
+        if (block.chainid != input[3]) {
             revert InvalidChainId();
         }
 
-        uint256 registrationHash = input[3];
+        uint256 registrationHash = input[4];
 
         registrationVerifier.verifyProof(proof, input);
 
