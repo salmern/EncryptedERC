@@ -10,6 +10,8 @@ import (
 CheckPublicKey checks if the given private key generates the given public key over the BabyJubjub curve
 */
 func CheckPublicKey(api frontend.API, bj *babyjub.BjWrapper, sender Sender) {
+	api.AssertIsLessOrEqual(sender.PrivateKey, api.Sub(bj.BasePointOrder, 1))
+
 	generatedSenderPublicKey := bj.MulWithBasePoint(sender.PrivateKey)
 	bj.AssertPoint(generatedSenderPublicKey, sender.PublicKey.P.X, sender.PublicKey.P.Y)
 }
@@ -18,6 +20,8 @@ func CheckPublicKey(api frontend.API, bj *babyjub.BjWrapper, sender Sender) {
 CheckPublicKey checks if the given private key generates the given public key over the BabyJubjub curve
 */
 func CheckRegistrationPublicKey(api frontend.API, bj *babyjub.BjWrapper, sender RegistrationSender) {
+	api.AssertIsLessOrEqual(sender.PrivateKey, api.Sub(bj.BasePointOrder, 1))
+
 	generatedSenderPublicKey := bj.MulWithBasePoint(sender.PrivateKey)
 	bj.AssertPoint(generatedSenderPublicKey, sender.PublicKey.P.X, sender.PublicKey.P.Y)
 }
@@ -26,8 +30,7 @@ func CheckRegistrationPublicKey(api frontend.API, bj *babyjub.BjWrapper, sender 
 CheckBalance checks if the sender's balance is a well-formed ElGamal ciphertext by decryption
 */
 func CheckBalance(api frontend.API, bj *babyjub.BjWrapper, sender Sender) {
-	// Add range check for balance
-	api.AssertIsLessOrEqual(sender.Balance, bj.BasePointOrder)
+	api.AssertIsLessOrEqual(sender.Balance, api.Sub(bj.BasePointOrder, 1))
 
 	decSenderBalanceP := bj.ElGamalDecrypt([2]frontend.Variable{sender.BalanceEGCT.C1.X, sender.BalanceEGCT.C1.Y}, [2]frontend.Variable{sender.BalanceEGCT.C2.X, sender.BalanceEGCT.C2.Y}, sender.PrivateKey)
 	givenSenderBalanceP := bj.MulWithBasePoint(sender.Balance)
@@ -38,8 +41,7 @@ func CheckBalance(api frontend.API, bj *babyjub.BjWrapper, sender Sender) {
 CheckPositiveValue verifies if the sender's value is the encryption of the given value by decryption
 */
 func CheckPositiveValue(api frontend.API, bj *babyjub.BjWrapper, sender Sender, value frontend.Variable) {
-	// Add range check for value
-	api.AssertIsLessOrEqual(value, bj.BasePointOrder)
+	api.AssertIsLessOrEqual(value, api.Sub(bj.BasePointOrder, 1))
 
 	positiveValueP := bj.MulWithBasePoint(value)
 	decSenderValueP := bj.ElGamalDecrypt([2]frontend.Variable{sender.ValueEGCT.C1.X, sender.ValueEGCT.C1.Y}, [2]frontend.Variable{sender.ValueEGCT.C2.X, sender.ValueEGCT.C2.Y}, sender.PrivateKey)
@@ -50,8 +52,7 @@ func CheckPositiveValue(api frontend.API, bj *babyjub.BjWrapper, sender Sender, 
 CheckValue verifies if the receiver's value is the encryption of the given value by re-encrypting it and comparing the result with the given ciphertext
 */
 func CheckValue(api frontend.API, bj *babyjub.BjWrapper, receiver Receiver, value frontend.Variable) {
-	// Add range check for value
-	api.AssertIsLessOrEqual(value, bj.BasePointOrder)
+	api.AssertIsLessOrEqual(value, api.Sub(bj.BasePointOrder, 1))
 
 	reEncC1, reEncC2 := bj.ElGamalEncrypt(receiver.PublicKey.P, bj.MulWithBasePoint(value), receiver.ValueRandom.R)
 	bj.AssertPoint(receiver.ValueEGCT.C1, reEncC1.X, reEncC1.Y)
@@ -62,6 +63,8 @@ func CheckValue(api frontend.API, bj *babyjub.BjWrapper, receiver Receiver, valu
 CheckPCTReceiver verifies if the given receiver's Poseidon ciphertext is well-formed by re-encryption
 */
 func CheckPCTReceiver(api frontend.API, bj *babyjub.BjWrapper, receiver Receiver, value frontend.Variable) {
+	api.AssertIsLessOrEqual(receiver.PCT.Random, api.Sub(bj.BasePointOrder, 1))
+
 	poseidonAuthKey := bj.MulWithBasePoint(receiver.PCT.Random)
 	bj.AssertPoint(poseidonAuthKey, receiver.PCT.AuthKey.X, receiver.PCT.AuthKey.Y)
 
@@ -78,6 +81,8 @@ func CheckPCTReceiver(api frontend.API, bj *babyjub.BjWrapper, receiver Receiver
 CheckPCTAuditor verifies if the given auditor's Poseidon ciphertext is well-formed by re-encryption
 */
 func CheckPCTAuditor(api frontend.API, bj *babyjub.BjWrapper, auditor Auditor, value frontend.Variable) {
+	api.AssertIsLessOrEqual(auditor.PCT.Random, api.Sub(bj.BasePointOrder, 1))
+
 	poseidonAuthKey := bj.MulWithBasePoint(auditor.PCT.Random)
 	bj.AssertPoint(poseidonAuthKey, auditor.PCT.AuthKey.X, auditor.PCT.AuthKey.Y)
 
