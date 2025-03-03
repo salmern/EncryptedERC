@@ -499,8 +499,20 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
             revert UserNotRegistered();
         }
 
+        // Get the contract's balance before the transfer
+        uint256 balanceBefore = token.balanceOf(address(this));
+
         // this function reverts if the transfer fails
         SafeERC20.safeTransferFrom(token, to, address(this), _amount);
+
+        // Get the contract's balance after the transfer
+        uint256 balanceAfter = token.balanceOf(address(this));
+
+        // Verify that the actual transferred amount matches the expected amount
+        uint256 actualTransferred = balanceAfter - balanceBefore;
+        if (actualTransferred != _amount) {
+            revert TransferFailed();
+        }
 
         (dust, tokenId) = _convertFrom(to, _amount, _tokenAddress, _amountPCT);
 
