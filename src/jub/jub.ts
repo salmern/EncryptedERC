@@ -45,11 +45,15 @@ export const encryptMessage = (
 	message: bigint,
 	random = genRandomBabyJubValue(),
 ): { cipher: [bigint[], bigint[]]; random: bigint } => {
+	let encRandom = random;
+	if (encRandom >= BASE_POINT_ORDER) {
+		encRandom = genRandomBabyJubValue() / 100n;
+	}
 	const p = mulPointEscalar(Base8, message);
 
 	return {
-		cipher: encryptPoint(publicKey, p, random),
-		random,
+		cipher: encryptPoint(publicKey, p, encRandom),
+		random: encRandom,
 	};
 };
 
