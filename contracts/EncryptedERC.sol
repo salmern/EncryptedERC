@@ -13,7 +13,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {CreateEncryptedERCParams, Point, EGCT, EncryptedBalance, AmountPCT} from "./types/Types.sol";
 
 // errors
-import {UserNotRegistered, UnauthorizedAccess, AuditorKeyNotSet, InvalidProof, InvalidOperation, TransferFailed, UnknownToken, InvalidChainId} from "./errors/Errors.sol";
+import {UserNotRegistered, UnauthorizedAccess, AuditorKeyNotSet, InvalidProof, InvalidOperation, TransferFailed, UnknownToken, InvalidChainId, InvalidNullifier} from "./errors/Errors.sol";
 
 // interfaces
 import {IRegistrar} from "./interfaces/IRegistrar.sol";
@@ -223,6 +223,11 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
 
         // check if the mint nullifier is unique
         uint256 mintNullifier = input[23];
+
+        if (mintNullifier >= BabyJubJub.Q) {
+            revert InvalidNullifier();
+        }
+
         if (alreadyMinted[mintNullifier]) {
             revert InvalidProof();
         }
