@@ -5,7 +5,10 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Point} from "./types/Types.sol";
 import {IEncryptedERC} from "./interfaces/IEncryptedERC.sol";
 import {IRegistrationVerifier} from "./interfaces/verifiers/IRegistrationVerifier.sol";
-import {UserAlreadyRegistered, InvalidChainId, InvalidSender} from "./errors/Errors.sol";
+import {UserAlreadyRegistered, InvalidChainId, InvalidSender, InvalidRegistrationHash} from "./errors/Errors.sol";
+
+// libraries
+import {BabyJubJub} from "./libraries/BabyJubJub.sol";
 
 contract Registrar {
     address public constant BURN_USER =
@@ -56,6 +59,10 @@ contract Registrar {
         }
 
         uint256 registrationHash = input[4];
+
+        if (registrationHash >= BabyJubJub.Q) {
+            revert InvalidRegistrationHash();
+        }
 
         registrationVerifier.verifyProof(proof, input);
 
