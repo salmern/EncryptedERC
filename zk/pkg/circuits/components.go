@@ -103,6 +103,9 @@ func CheckPCTAuditor(api frontend.API, bj *babyjub.BjWrapper, auditor Auditor, v
 	api.AssertIsEqual(decrypted[0], value)
 }
 
+/*
+CheckRegistrationHash verifies if the given registration hash is well-formed
+*/
 func CheckRegistrationHash(api frontend.API, sender RegistrationSender) {
 	pos := poseidon.NewPoseidonHash(api)
 	hash := poseidon.Hash3(pos, sender.ChainID, sender.PrivateKey, sender.Address)
@@ -110,7 +113,7 @@ func CheckRegistrationHash(api frontend.API, sender RegistrationSender) {
 }
 
 /*
-CheckNullifierHash verifies if the given nullifier hash is used
+CheckNullifierHash verifies if the given nullifier hash is well-formed
 */
 func CheckNullifierHash(api frontend.API, auditor Auditor, nullifier MintNullifier) {
 	pos := poseidon.NewPoseidonHash(api)
