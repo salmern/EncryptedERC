@@ -40,7 +40,12 @@ jobs:
         run: "npm install"
 
       - name: "Coverage"
-        run: "npx hardhat coverage"
+        run: touch eERC-coverage.txt && \
+          npx hardhat coverage | tee eERC-coverage.txt || true && \
+          cat eERC-coverage.txt >> $GITHUB_STEP_SUMMARY
+
+      - name: "Run linter"
+        run: "npx hardhat lint"
 
       - name: "Add test summary"
         run: |
