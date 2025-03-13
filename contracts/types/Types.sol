@@ -7,15 +7,15 @@ struct Point {
 }
 
 struct CreateEncryptedERCParams {
-    address _registrar;
-    bool _isConverter;
-    string _name;
-    string _symbol;
-    uint8 _decimals;
+    address registrar;
+    bool isConverter;
+    string name;
+    string symbol;
+    uint8 decimals;
     // verifiers
-    address _mintVerifier;
-    address _withdrawVerifier;
-    address _transferVerifier;
+    address mintVerifier;
+    address withdrawVerifier;
+    address transferVerifier;
 }
 
 struct AmountPCT {
