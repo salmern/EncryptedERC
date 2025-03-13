@@ -1,0 +1,13 @@
+---- Verifiers ----
+RegistrationVerifier  : 0xA5703e204A33424BD43037Bbcb4961e53da0b7e8
+MintVerifier          : 0x68b67a5774c83aB7E205CF416f3D6619D0660ee7
+WithdrawVerifier      : 0x739b6382Fb297a4568B621e47233bCd8C8484857
+TransferVerifier      : 0xfbCF328e3709C8B057455C2179a41Ddd14AB351a
+---- Library ----
+BabyJubJub            : 0xf02162CBF33694E3a3796c65A4450D061599Fee1
+---- Registrar ----
+Registrar             : 0x77D6DfBdAc16eE492A8ec712a85b23286b398521
+---- ERC20 ----
+ERC20                 : 0x14B80f5b9Ff10cCC5EeC025976B88dCe14a2C08C
+---- EncryptedERC ----
+EncryptedERC          : 0x167324286ff922B177671C22E9DeECBcf334baF2

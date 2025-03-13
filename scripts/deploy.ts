@@ -10,6 +10,13 @@ const main = async () => {
 	const DECIMALS = 4;
 	const [deployer] = await ethers.getSigners();
 
+	// Add higher gas settings to avoid "replacement transaction underpriced" errors
+	const overrides = {
+		gasLimit: 5000000,
+		maxFeePerGas: ethers.parseUnits("50", "gwei"),
+		maxPriorityFeePerGas: ethers.parseUnits("2", "gwei")
+	};
+
 	const {
 		registrationVerifier,
 		mintVerifier,
@@ -33,40 +40,40 @@ const main = async () => {
 	console.log(`Registrar             : ${registrar.target}`);
 
 	const erc20Factory = new SimpleERC20__factory(deployer);
-	const erc20 = await erc20Factory.deploy("Test", "TEST", DECIMALS);
+	const erc20 = await erc20Factory.deploy("Test3", "TEST3", DECIMALS, overrides);
 	await erc20.waitForDeployment();
 	console.log("---- ERC20 ----");
 	console.log(`ERC20                 : ${erc20.target}`);
-	{
-		const tx = await erc20
-			.connect(deployer)
-			.mint(deployer.address, 1000000000000000000000000000n);
-		await tx.wait();
-		console.log("Minted 1000000000000000000000000000 to deployer");
-	}
+	// {
+	// 	const tx = await erc20
+	// 		.connect(deployer)
+	// 		.mint(deployer.address, 1000000000000000000000000000n, overrides);
+	// 	await tx.wait();
+	// 	console.log("Minted 1000000000000000000000000000 to deployer");
+	// }
 
 	const encryptedERCFactory = new EncryptedERC__factory({
 		"contracts/libraries/BabyJubJub.sol:BabyJubJub": babyJubJub,
 	});
 	const encryptedERC = await encryptedERCFactory.connect(deployer).deploy({
 		_registrar: registrar.target,
-		_isConverter: true, // lets leave it false for now
-		_name: "Encrypted ERC",
-		_symbol: "EERC",
+		_isConverter: false, // lets leave it false for now
+		_name: "Encrypted ERC2",
+		_symbol: "EERC2",
 		_mintVerifier: mintVerifier,
 		_withdrawVerifier: withdrawVerifier,
 		_transferVerifier: transferVerifier,
 		_decimals: DECIMALS,
-	});
+	}, overrides);
 	await encryptedERC.waitForDeployment();
 
-	{
-		const tx = await erc20
-			.connect(deployer)
-			.approve(encryptedERC.target, 10000000000000000000000n);
-		await tx.wait();
-		console.log("Approved 10000000000000000000000n to EncryptedERC Contract");
-	}
+	// {
+	// 	const tx = await erc20
+	// 		.connect(deployer)
+	// 		.approve(encryptedERC.target, 10000000000000000000000n, overrides);
+	// 	await tx.wait();
+	// 	console.log("Approved 10000000000000000000000n to EncryptedERC Contract");
+	// }
 
 	console.log("---- EncryptedERC ----");
 	console.log(`EncryptedERC          : ${encryptedERC.target}`);
