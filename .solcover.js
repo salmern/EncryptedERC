@@ -9,5 +9,6 @@ module.exports = {
     "x/g16_eerc_mint.sol",
     "x/g16_eerc_register.sol",
     "x/g16_eerc_transfer.sol",
+    "x/g16_eerc_withdraw.sol",
   ],
 };
