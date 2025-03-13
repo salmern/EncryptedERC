@@ -45,7 +45,7 @@ jobs:
           cat eERC-coverage.txt >> $GITHUB_STEP_SUMMARY
 
       - name: "Run linter"
-        run: "npx hardhat lint"
+        run: "npm run lint:sol"
 
       - name: "Add test summary"
         run: |
