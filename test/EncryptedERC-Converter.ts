@@ -11,7 +11,6 @@ import {
 } from "../typechain-types/factories/contracts";
 
 import { formatPrivKeyForBabyJub } from "maci-crypto";
-import { BN254_SCALAR_FIELD, processPoseidonEncryption } from "../src/jub/jub";
 import type { EncryptedERC } from "../typechain-types/contracts/EncryptedERC";
 import type { SimpleERC20 } from "../typechain-types/contracts/SimpleERC20";
 import {
@@ -23,7 +22,8 @@ import {
   withdraw,
 } from "./helpers";
 import { User } from "./user";
-
+import { processPoseidonEncryption } from "../src";
+import { BN254_SCALAR_FIELD } from "../src/constants";
 const DECIMALS = 10;
 
 describe("EncryptedERC - Converter", () => {
@@ -123,39 +123,49 @@ describe("EncryptedERC - Converter", () => {
 				const network = await ethers.provider.getNetwork();
 				const chainId = BigInt(network.chainId)
 
-				for (const user of users.slice(0, 5)) {
-					const privateInputs = [
-						formatPrivKeyForBabyJub(user.privateKey).toString(),
-					];
+        for (const user of users.slice(0, 5)) {
+          const privateInputs = [
+            formatPrivKeyForBabyJub(user.privateKey).toString(),
+          ];
 
-					const fullAddress = BigInt(user.signer.address);
+          const fullAddress = BigInt(user.signer.address);
 
-					const publicInputs = [...user.publicKey.map(String),  fullAddress.toString(), chainId.toString()];
-					const input = {
-						privateInputs,
-						publicInputs,
-					};
+          const publicInputs = [
+            ...user.publicKey.map(String),
+            fullAddress.toString(),
+            chainId.toString(),
+          ];
+          const input = {
+            privateInputs,
+            publicInputs,
+          };
 
-					const registrationHash = poseidon3([
-						chainId,
-						formatPrivKeyForBabyJub(user.privateKey).toString(),
-						fullAddress,
-					]).toString();
+          const registrationHash = poseidon3([
+            chainId,
+            formatPrivKeyForBabyJub(user.privateKey).toString(),
+            fullAddress,
+          ]).toString();
 
-					input.publicInputs.push(registrationHash);
+          input.publicInputs.push(registrationHash);
 
-					const proof = await generateGnarkProof(
-						"REGISTER",
-						JSON.stringify(input),
-					);
+          const proof = await generateGnarkProof(
+            "REGISTER",
+            JSON.stringify(input)
+          );
 
-					const tx = await registrar
-						.connect(user.signer)
-						.register(
-							proof.map(BigInt),
-							publicInputs.map(BigInt) as [bigint, bigint, bigint, bigint, bigint],
-						);
-					await tx.wait();
+          const tx = await registrar
+            .connect(user.signer)
+            .register(
+              proof.map(BigInt),
+              publicInputs.map(BigInt) as [
+                bigint,
+                bigint,
+                bigint,
+                bigint,
+                bigint
+              ]
+            );
+          await tx.wait();
 
           // check if the user is registered
           expect(await registrar.isUserRegistered(user.signer.address)).to.be
@@ -767,23 +777,23 @@ describe("EncryptedERC - Converter", () => {
 
     describe("Blacklisting Tokens", () => {
       it("set token as blacklisted", async () => {
-
-        await encryptedERC.connect(owner).setTokenBlacklist(
-          blacklistedERC20.target,
-          true,
-        );
+        await encryptedERC
+          .connect(owner)
+          .setTokenBlacklist(blacklistedERC20.target, true);
 
         const isBlacklisted = await encryptedERC.isTokenBlacklisted(
           blacklistedERC20.target,
         );
-          expect(isBlacklisted).to.equal(true);
+        expect(isBlacklisted).to.equal(true);
       });
 
       it("should revert if user is not owner", async () => {
         const user = users[1].signer;
 
         await expect(
-          encryptedERC.connect(user).setTokenBlacklist(blacklistedERC20.target, true)
+          encryptedERC
+          .connect(user)
+          .setTokenBlacklist(blacklistedERC20.target, true)
         ).to.be.reverted;
       });
 
@@ -794,10 +804,10 @@ describe("EncryptedERC - Converter", () => {
           encryptedERC.connect(user.signer).deposit(
             1n,
             blacklistedERC20.target,
-            Array.from({ length: 7 }, () => 1n),
-          ),
-          ).to.be.reverted;
-        });
+            Array.from({ length: 7 }, () => 1n)
+          )
+        ).to.be.reverted;
+      });
     });
 
     describe("Withdrawing Tokens - Lower ERC20 Decimals (6)", () => {
