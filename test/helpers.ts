@@ -351,14 +351,14 @@ export const withdraw = async (
 	const newBalance = userBalance - amount;
 	const userPublicKey = user.publicKey;
 
-	// 2. create pct for the user with the newly calculated balance
+	// 1. create pct for the user with the newly calculated balance
 	const {
 		ciphertext: userCiphertext,
 		nonce: userNonce,
 		authKey: userAuthKey,
 	} = processPoseidonEncryption([newBalance], userPublicKey);
 
-	// 3. create pct for the auditor with the burn amount
+	// 2. create pct for the auditor with the withdrawal amount
 	const {
 		ciphertext: auditorCiphertext,
 		nonce: auditorNonce,

@@ -1,7 +1,7 @@
 import type { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { poseidon2, poseidon3 } from "poseidon-lite";
+import { poseidon3 } from "poseidon-lite";
 import type { Registrar } from "../typechain-types/contracts/Registrar";
 import {
   EncryptedERC__factory,
@@ -24,6 +24,8 @@ import {
 import { User } from "./user";
 import { processPoseidonEncryption } from "../src";
 import { BN254_SCALAR_FIELD } from "../src/constants";
+import { FeeERC20 } from "../typechain-types/contracts/FeeERC20";
+
 const DECIMALS = 10;
 
 describe("EncryptedERC - Converter", () => {
@@ -33,7 +35,7 @@ describe("EncryptedERC - Converter", () => {
   let owner: SignerWithAddress;
   let encryptedERC: EncryptedERC;
   let blacklistedERC20: SimpleERC20;
-  let feeERC20: any; // Using any type for now
+  let feeERC20: FeeERC20;
   const erc20s: SimpleERC20[] = [];
 
   const deployFixture = async () => {
@@ -49,6 +51,7 @@ describe("EncryptedERC - Converter", () => {
     const babyJubJub = await deployLibrary(owner);
 
     for (const d of [6, 18, DECIMALS]) {
+      // Deploy a simple ERC20 token
       const simpleERC20Factory = new SimpleERC20__factory(owner);
       const simpleERC20_ = await simpleERC20Factory
         .connect(owner)
@@ -57,13 +60,14 @@ describe("EncryptedERC - Converter", () => {
       erc20s.push(simpleERC20_);
     }
 
-    // Deploy a fee ERC20 token
+    // Deploy an ERC20 token with fee
     const feeERC20Factory = new FeeERC20__factory(owner);
     feeERC20 = await feeERC20Factory
       .connect(owner)
-      .deploy("Fee Token", "FEE", 18, 500, owner.address); // 5% fee
+      .deploy("Fee Token", "FEE", 18, 5, owner.address); // 5% fee
     await feeERC20.waitForDeployment();
 
+    // Deploy an ERC20 token which will be blacklisted
     const blacklistedERC20Factory = new SimpleERC20__factory(owner);
     const blacklistedERC20_ = await blacklistedERC20Factory
       .connect(owner)
@@ -71,6 +75,7 @@ describe("EncryptedERC - Converter", () => {
     await blacklistedERC20_.waitForDeployment();
     blacklistedERC20 = blacklistedERC20_;
 
+    // Deploy the registrar contract
     const registrarFactory = new Registrar__factory(owner);
     const registrar_ = await registrarFactory
       .connect(owner)
@@ -78,6 +83,7 @@ describe("EncryptedERC - Converter", () => {
 
     await registrar_.waitForDeployment();
 
+    // Deploy the Converter EncryptedERC contract
     const encryptedERCFactory = new EncryptedERC__factory({
       "contracts/libraries/BabyJubJub.sol:BabyJubJub": babyJubJub,
     });
