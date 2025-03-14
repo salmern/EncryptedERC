@@ -261,7 +261,7 @@ describe("EncryptedERC - Converter", () => {
         await expect(
           registrar
             .connect(user.signer)
-            .register(validParamsForUser4.proof, inputs)
+            .register(validParamsForUser4.proof.map(BigInt), inputs.map(BigInt) as [bigint, bigint, bigint, bigint, bigint])
         ).to.be.revertedWithCustomError(registrar, "InvalidRegistrationHash");
       });
     });
