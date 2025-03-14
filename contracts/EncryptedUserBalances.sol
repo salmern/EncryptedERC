@@ -79,7 +79,7 @@ contract EncryptedUserBalances {
         EncryptedBalance storage balance = balances[user][tokenId];
 
         // if user balance is not initialized, initialize it
-        if (balance.eGCT.c1.X == 0 && balance.eGCT.c1.Y == 0) {
+        if (balance.eGCT.c1.x == 0 && balance.eGCT.c1.y == 0) {
             balance.eGCT = eGCT;
         } else {
             // if user balance is already initialized, add the encrypted amount to the balance
@@ -234,7 +234,7 @@ contract EncryptedUserBalances {
         return
             uint256(
                 keccak256(
-                    abi.encode(eGCT.c1.X, eGCT.c1.Y, eGCT.c2.X, eGCT.c2.Y)
+                    abi.encode(eGCT.c1.x, eGCT.c1.y, eGCT.c2.x, eGCT.c2.y)
                 )
             );
     }

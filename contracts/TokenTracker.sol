@@ -62,10 +62,6 @@ contract TokenTracker is Ownable2Step {
      * @dev Adds a token to the tracker
      */
     function _addToken(address tokenAddress) internal {
-        if (blacklistedTokens[tokenAddress]) {
-            revert TokenBlacklisted(tokenAddress);
-        }
-
         uint256 newTokenId = nextTokenId;
         tokenIds[tokenAddress] = newTokenId;
         tokenAddresses[newTokenId] = tokenAddress;

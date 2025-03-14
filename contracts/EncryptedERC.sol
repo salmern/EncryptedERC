@@ -40,7 +40,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
     uint8 public decimals;
 
     // auditor
-    Point public auditorPublicKey = Point({X: 0, Y: 0});
+    Point public auditorPublicKey = Point({x: 0, y: 0});
     address public auditor = address(0);
 
     // nullifier hash for private mint
@@ -165,7 +165,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         uint256[2] memory publicKey = registrar.getUserPublicKey(user);
 
         auditor = user;
-        auditorPublicKey = Point({X: publicKey[0], Y: publicKey[1]});
+        auditorPublicKey = Point({x: publicKey[0], y: publicKey[1]});
 
         emit AuditorChanged(oldAuditor, user);
     }
@@ -207,8 +207,8 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         {
             // auditor public key should match
             if (
-                auditorPublicKey.X != input[13] ||
-                auditorPublicKey.Y != input[14]
+                auditorPublicKey.x != input[13] ||
+                auditorPublicKey.y != input[14]
             ) {
                 revert InvalidProof();
             }
@@ -272,8 +272,8 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         {
             // auditor public keys should match
             if (
-                auditorPublicKey.X != input[23] ||
-                auditorPublicKey.Y != input[24]
+                auditorPublicKey.x != input[23] ||
+                auditorPublicKey.y != input[24]
             ) {
                 revert InvalidProof();
             }
@@ -340,8 +340,8 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         {
             // auditor public keys should match
             if (
-                auditorPublicKey.X != input[23] ||
-                auditorPublicKey.Y != input[24]
+                auditorPublicKey.x != input[23] ||
+                auditorPublicKey.y != input[24]
             ) {
                 revert InvalidProof();
             }
@@ -453,7 +453,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         {
             // auditor public key should match
             if (
-                auditorPublicKey.X != input[6] || auditorPublicKey.Y != input[7]
+                auditorPublicKey.x != input[6] || auditorPublicKey.y != input[7]
             ) {
                 revert InvalidProof();
             }
@@ -478,7 +478,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
      * @return bool returns true if the auditor public key is set
      */
     function isAuditorKeySet() public view returns (bool) {
-        return auditorPublicKey.X != 0 && auditorPublicKey.Y != 1;
+        return auditorPublicKey.x != 0 && auditorPublicKey.y != 1;
     }
 
     /**
@@ -530,8 +530,8 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
 
         {
             EGCT memory providedBalance = EGCT({
-                c1: Point({X: input[2], Y: input[3]}),
-                c2: Point({X: input[4], Y: input[5]})
+                c1: Point({x: input[2], y: input[3]}),
+                c2: Point({x: input[4], y: input[5]})
             });
 
             uint256 balanceHash = _hashEGCT(providedBalance);
@@ -546,7 +546,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
             }
 
             EGCT memory encryptedWithdrawnAmount = BabyJubJub.encrypt(
-                Point({X: input[0], Y: input[1]}),
+                Point({x: input[0], y: input[1]}),
                 amount
             );
 
@@ -608,13 +608,13 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
             uint256[2] memory publicKey = registrar.getUserPublicKey(to);
 
             EGCT memory eGCT = BabyJubJub.encrypt(
-                Point({X: publicKey[0], Y: publicKey[1]}),
+                Point({x: publicKey[0], y: publicKey[1]}),
                 value
             );
 
             EncryptedBalance storage balance = balances[to][tokenId];
 
-            if (balance.eGCT.c1.X == 0 && balance.eGCT.c1.Y == 0) {
+            if (balance.eGCT.c1.x == 0 && balance.eGCT.c1.y == 0) {
                 balance.eGCT = eGCT;
             } else {
                 balance.eGCT.c1 = BabyJubJub._add(balance.eGCT.c1, eGCT.c1);
@@ -677,8 +677,8 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         uint256[24] calldata input
     ) internal {
         EGCT memory eGCT = EGCT({
-            c1: Point({X: input[2], Y: input[3]}),
-            c2: Point({X: input[4], Y: input[5]})
+            c1: Point({x: input[2], y: input[3]}),
+            c2: Point({x: input[4], y: input[5]})
         });
 
         // since private mint is only for the standalone ERC, tokenId is always 0
@@ -714,8 +714,8 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
     ) internal {
         {
             EGCT memory providedBalance = EGCT({
-                c1: Point({X: input[2], Y: input[3]}),
-                c2: Point({X: input[4], Y: input[5]})
+                c1: Point({x: input[2], y: input[3]}),
+                c2: Point({x: input[4], y: input[5]})
             });
 
             uint256 balanceHash = _hashEGCT(providedBalance);
@@ -729,8 +729,8 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
             }
 
             EGCT memory fromEncryptedAmount = EGCT({
-                c1: Point({X: input[6], Y: input[7]}),
-                c2: Point({X: input[8], Y: input[9]})
+                c1: Point({x: input[6], y: input[7]}),
+                c2: Point({x: input[8], y: input[9]})
             });
 
             _subtractFromUserBalance(
@@ -744,8 +744,8 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
 
         {
             EGCT memory toEncryptedAmount = EGCT({
-                c1: Point({X: input[12], Y: input[13]}),
-                c2: Point({X: input[14], Y: input[15]})
+                c1: Point({x: input[12], y: input[13]}),
+                c2: Point({x: input[14], y: input[15]})
             });
 
             uint256[7] memory amountPCT;

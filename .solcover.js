@@ -5,6 +5,7 @@ module.exports = {
     "verifiers/TransferVerifier.sol",
     "verifiers/RegistrationVerifier.sol",
     "SimpleERC20.sol",
+    "FeeERC20.sol",
     "x/g16_eerc_burn.sol",
     "x/g16_eerc_mint.sol",
     "x/g16_eerc_register.sol",

@@ -45,22 +45,22 @@ library BabyJubJub {
         Point memory _point1,
         Point memory _point2
     ) public view returns (Point memory) {
-        uint256 x1x2 = mulmod(_point1.X, _point2.X, Q);
-        uint256 y1y2 = mulmod(_point1.Y, _point2.Y, Q);
+        uint256 x1x2 = mulmod(_point1.x, _point2.x, Q);
+        uint256 y1y2 = mulmod(_point1.y, _point2.y, Q);
 
         uint256 dx1x2y1y2 = mulmod(D, mulmod(x1x2, y1y2, Q), Q);
 
         uint256 x3Num = addmod(
-            mulmod(_point1.X, _point2.Y, Q),
-            mulmod(_point1.Y, _point2.X, Q),
+            mulmod(_point1.x, _point2.y, Q),
+            mulmod(_point1.y, _point2.x, Q),
             Q
         );
         uint256 y3Num = submod(y1y2, mulmod(A, x1x2, Q));
 
         return
             Point({
-                X: mulmod(x3Num, invmod(addmod(1, dx1x2y1y2, Q)), Q),
-                Y: mulmod(y3Num, invmod(submod(1, dx1x2y1y2)), Q)
+                x: mulmod(x3Num, invmod(addmod(1, dx1x2y1y2, Q)), Q),
+                y: mulmod(y3Num, invmod(submod(1, dx1x2y1y2)), Q)
             });
     }
 
@@ -82,7 +82,7 @@ library BabyJubJub {
         Point memory initial = _point;
 
         // Initialize result
-        Point memory result = Point({X: 0, Y: 1});
+        Point memory result = Point({x: 0, y: 1});
 
         // Loop while remainder is greater than 0
         while (remaining != 0) {
@@ -136,8 +136,8 @@ library BabyJubJub {
     function base8() public pure returns (Point memory) {
         return
             Point({
-                X: 5299619240641551281634865583518297030282874472190772894086521144482721001553,
-                Y: 16950150798460657717958625567821834550301663161624707787222815936182638968203
+                x: 5299619240641551281634865583518297030282874472190772894086521144482721001553,
+                y: 16950150798460657717958625567821834550301663161624707787222815936182638968203
             });
     }
 
@@ -209,7 +209,7 @@ library BabyJubJub {
      * @return p = -(_p)
      */
     function negate(Point memory _point) internal pure returns (Point memory) {
-        return Point({X: Q - _point.X, Y: _point.Y});
+        return Point({x: Q - _point.x, y: _point.y});
     }
 
     /**

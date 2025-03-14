@@ -9,7 +9,7 @@ import {UserAlreadyRegistered, InvalidChainId, InvalidSender, InvalidRegistratio
 import {BabyJubJub} from "./libraries/BabyJubJub.sol";
 
 contract Registrar {
-    address public constant BURN_USER =
+    address public constant burnUser =
         0x1111111111111111111111111111111111111111;
 
     // registration verifier
@@ -35,7 +35,7 @@ contract Registrar {
     constructor(address registrationVerifier_) {
         registrationVerifier = IRegistrationVerifier(registrationVerifier_);
         // setting burn user to the identity point (0, 1)
-        userPublicKeys[BURN_USER] = Point({X: 0, Y: 1});
+        userPublicKeys[burnUser] = Point({x: 0, y: 1});
     }
 
     /**
@@ -68,7 +68,7 @@ contract Registrar {
             revert UserAlreadyRegistered();
         }
 
-        _register(account, Point({X: input[0], Y: input[1]}), registrationHash);
+        _register(account, Point({x: input[0], y: input[1]}), registrationHash);
     }
 
     /**
@@ -78,7 +78,7 @@ contract Registrar {
      * @return bool True if the user is registered
      */
     function isUserRegistered(address user) public view returns (bool) {
-        return userPublicKeys[user].X != 0 && userPublicKeys[user].Y != 0;
+        return userPublicKeys[user].x != 0 && userPublicKeys[user].y != 0;
     }
 
     /**
@@ -90,7 +90,7 @@ contract Registrar {
     function getUserPublicKey(
         address user
     ) public view returns (uint256[2] memory publicKey) {
-        return [userPublicKeys[user].X, userPublicKeys[user].Y];
+        return [userPublicKeys[user].x, userPublicKeys[user].y];
     }
 
     /**

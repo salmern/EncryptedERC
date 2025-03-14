@@ -2,8 +2,8 @@
 pragma solidity 0.8.27;
 
 struct Point {
-    uint256 X;
-    uint256 Y;
+    uint256 x;
+    uint256 y;
 }
 
 struct CreateEncryptedERCParams {
