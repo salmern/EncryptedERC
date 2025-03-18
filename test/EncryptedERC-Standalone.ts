@@ -1,6 +1,6 @@
 import type { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/dist/src/signer-with-address";
-import { expect, use } from "chai";
-import { ethers, network } from "hardhat";
+import { expect } from "chai";
+import { ethers } from "hardhat";
 import type { Registrar } from "../typechain-types/contracts/Registrar";
 import {
   EncryptedERC__factory,
@@ -9,8 +9,10 @@ import {
 
 import { Base8, mulPointEscalar } from "@zk-kit/baby-jubjub";
 import { formatPrivKeyForBabyJub } from "maci-crypto";
-import { BN254_SCALAR_FIELD, decryptPoint } from "../src/jub/jub";
+import { decryptPoint } from "../src/jub/jub";
 import type { EncryptedERC } from "../typechain-types/contracts/EncryptedERC";
+import { BN254_SCALAR_FIELD } from "../src/constants";
+
 import {
   decryptPCT,
   deployLibrary,
@@ -93,41 +95,51 @@ describe("EncryptedERC - Standalone", () => {
       };
 
       it("users should be able to register properly", async () => {
-				const network = await ethers.provider.getNetwork();
-				const chainId = network.chainId;
-				for (const user of users.slice(0, 5)) {
-					const privateInputs = [
-						formatPrivKeyForBabyJub(user.privateKey).toString(),
-					];
+        const network = await ethers.provider.getNetwork();
+        const chainId = network.chainId;
+        for (const user of users.slice(0, 5)) {
+          const privateInputs = [
+            formatPrivKeyForBabyJub(user.privateKey).toString(),
+          ];
 
-					const fullAddress = BigInt(user.signer.address);
+          const fullAddress = BigInt(user.signer.address);
 
-					const publicInputs = [...user.publicKey.map(String), fullAddress.toString(), chainId.toString()];
-					const input = {
-						privateInputs,
-						publicInputs,
-					};
+          const publicInputs = [
+            ...user.publicKey.map(String),
+            fullAddress.toString(),
+            chainId.toString(),
+          ];
+          const input = {
+            privateInputs,
+            publicInputs,
+          };
 
-					const registrationHash = poseidon3([
-						chainId,
-						formatPrivKeyForBabyJub(user.privateKey).toString(),
-						fullAddress,
-					]).toString();
+          const registrationHash = poseidon3([
+            chainId,
+            formatPrivKeyForBabyJub(user.privateKey).toString(),
+            fullAddress,
+          ]).toString();
 
-					input.publicInputs.push(registrationHash);
+          input.publicInputs.push(registrationHash);
 
-					const proof = await generateGnarkProof(
-						"REGISTER",
-						JSON.stringify(input),
-					);
+          const proof = await generateGnarkProof(
+            "REGISTER",
+            JSON.stringify(input)
+          );
 
-					const tx = await registrar
-						.connect(user.signer)
-						.register(
-							proof.map(BigInt),
-							publicInputs.map(BigInt) as [bigint, bigint, bigint, bigint, bigint],
-						);
-					await tx.wait();
+          const tx = await registrar
+            .connect(user.signer)
+            .register(
+              proof.map(BigInt),
+              publicInputs.map(BigInt) as [
+                bigint,
+                bigint,
+                bigint,
+                bigint,
+                bigint
+              ]
+            );
+          await tx.wait();
 
           // check if the user is registered
           expect(await registrar.isUserRegistered(user.signer.address)).to.be
@@ -151,7 +163,13 @@ describe("EncryptedERC - Standalone", () => {
             .connect(alreadyRegisteredUser.signer)
             .register(
               validParams.proof.map(BigInt),
-              validParams.publicInputs.map(BigInt) as [bigint, bigint, bigint, bigint, bigint]
+              validParams.publicInputs.map(BigInt) as [
+                bigint,
+                bigint,
+                bigint,
+                bigint,
+                bigint
+              ]
             )
         ).to.be.revertedWithCustomError(registrar, "InvalidSender");
       });
@@ -372,7 +390,9 @@ describe("EncryptedERC - Standalone", () => {
         inputs[23] = String(BN254_SCALAR_FIELD + 1n);
 
         await expect(
-          encryptedERC.connect(owner).privateMint(user.signer.address, validParamsForUser0.proof, inputs)
+          encryptedERC
+            .connect(owner)
+            .privateMint(user.signer.address, validParamsForUser0.proof, inputs)
         ).to.be.revertedWithCustomError(encryptedERC, "InvalidNullifier");
       });
 
@@ -400,11 +420,7 @@ describe("EncryptedERC - Standalone", () => {
         await expect(
           encryptedERC
             .connect(owner)
-            .privateMint(
-              user.signer.address,
-              validParamsForUser0.proof,
-              inputs
-            )
+            .privateMint(user.signer.address, validParamsForUser0.proof, inputs)
         ).to.be.revertedWithCustomError(encryptedERC, "InvalidProof");
       });
 
@@ -546,11 +562,7 @@ describe("EncryptedERC - Standalone", () => {
         await expect(
           encryptedERC
             .connect(user.signer)
-            .privateBurn(
-              validParams.proof,
-              inputs,
-              validParams.userBalancePCT
-            )
+            .privateBurn(validParams.proof, inputs, validParams.userBalancePCT)
         ).to.be.revertedWithCustomError(encryptedERC, "InvalidProof");
       });
 
@@ -564,11 +576,7 @@ describe("EncryptedERC - Standalone", () => {
         await expect(
           encryptedERC
             .connect(user.signer)
-            .privateBurn(
-              validParams.proof,
-              inputs,
-              validParams.userBalancePCT
-            )
+            .privateBurn(validParams.proof, inputs, validParams.userBalancePCT)
         ).to.be.revertedWithCustomError(encryptedERC, "InvalidProof");
       });
 
@@ -582,11 +590,7 @@ describe("EncryptedERC - Standalone", () => {
         await expect(
           encryptedERC
             .connect(user.signer)
-            .privateBurn(
-              validParams.proof,
-              inputs,
-              validParams.userBalancePCT
-            )
+            .privateBurn(validParams.proof, inputs, validParams.userBalancePCT)
         ).to.be.revertedWithCustomError(encryptedERC, "InvalidProof");
       });
 

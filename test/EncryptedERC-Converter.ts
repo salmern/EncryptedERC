@@ -1,17 +1,16 @@
 import type { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/dist/src/signer-with-address";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { poseidon2, poseidon3 } from "poseidon-lite";
+import { poseidon3 } from "poseidon-lite";
 import type { Registrar } from "../typechain-types/contracts/Registrar";
 import {
   EncryptedERC__factory,
   Registrar__factory,
   SimpleERC20__factory,
-  FeeERC20__factory
+  FeeERC20__factory,
 } from "../typechain-types/factories/contracts";
 
 import { formatPrivKeyForBabyJub } from "maci-crypto";
-import { BN254_SCALAR_FIELD, processPoseidonEncryption } from "../src/jub/jub";
 import type { EncryptedERC } from "../typechain-types/contracts/EncryptedERC";
 import type { SimpleERC20 } from "../typechain-types/contracts/SimpleERC20";
 import {
@@ -23,6 +22,9 @@ import {
   withdraw,
 } from "./helpers";
 import { User } from "./user";
+import { processPoseidonEncryption } from "../src";
+import { BN254_SCALAR_FIELD } from "../src/constants";
+import { FeeERC20 } from "../typechain-types/contracts/FeeERC20";
 
 const DECIMALS = 10;
 
@@ -33,7 +35,7 @@ describe("EncryptedERC - Converter", () => {
   let owner: SignerWithAddress;
   let encryptedERC: EncryptedERC;
   let blacklistedERC20: SimpleERC20;
-  let feeERC20: any; // Using any type for now
+  let feeERC20: FeeERC20;
   const erc20s: SimpleERC20[] = [];
 
   const deployFixture = async () => {
@@ -49,6 +51,7 @@ describe("EncryptedERC - Converter", () => {
     const babyJubJub = await deployLibrary(owner);
 
     for (const d of [6, 18, DECIMALS]) {
+      // Deploy a simple ERC20 token
       const simpleERC20Factory = new SimpleERC20__factory(owner);
       const simpleERC20_ = await simpleERC20Factory
         .connect(owner)
@@ -57,13 +60,14 @@ describe("EncryptedERC - Converter", () => {
       erc20s.push(simpleERC20_);
     }
 
-    // Deploy a fee ERC20 token
+    // Deploy an ERC20 token with fee
     const feeERC20Factory = new FeeERC20__factory(owner);
     feeERC20 = await feeERC20Factory
       .connect(owner)
-      .deploy("Fee Token", "FEE", 18, 500, owner.address); // 5% fee
+      .deploy("Fee Token", "FEE", 18, 5, owner.address); // 5% fee
     await feeERC20.waitForDeployment();
 
+    // Deploy an ERC20 token which will be blacklisted
     const blacklistedERC20Factory = new SimpleERC20__factory(owner);
     const blacklistedERC20_ = await blacklistedERC20Factory
       .connect(owner)
@@ -71,6 +75,7 @@ describe("EncryptedERC - Converter", () => {
     await blacklistedERC20_.waitForDeployment();
     blacklistedERC20 = blacklistedERC20_;
 
+    // Deploy the registrar contract
     const registrarFactory = new Registrar__factory(owner);
     const registrar_ = await registrarFactory
       .connect(owner)
@@ -78,6 +83,7 @@ describe("EncryptedERC - Converter", () => {
 
     await registrar_.waitForDeployment();
 
+    // Deploy the Converter EncryptedERC contract
     const encryptedERCFactory = new EncryptedERC__factory({
       "contracts/libraries/BabyJubJub.sol:BabyJubJub": babyJubJub,
     });
@@ -120,42 +126,52 @@ describe("EncryptedERC - Converter", () => {
       };
 
       it("users should be able to register properly", async () => {
-				const network = await ethers.provider.getNetwork();
-				const chainId = BigInt(network.chainId)
+        const network = await ethers.provider.getNetwork();
+        const chainId = BigInt(network.chainId);
 
-				for (const user of users.slice(0, 5)) {
-					const privateInputs = [
-						formatPrivKeyForBabyJub(user.privateKey).toString(),
-					];
+        for (const user of users.slice(0, 5)) {
+          const privateInputs = [
+            formatPrivKeyForBabyJub(user.privateKey).toString(),
+          ];
 
-					const fullAddress = BigInt(user.signer.address);
+          const fullAddress = BigInt(user.signer.address);
 
-					const publicInputs = [...user.publicKey.map(String),  fullAddress.toString(), chainId.toString()];
-					const input = {
-						privateInputs,
-						publicInputs,
-					};
+          const publicInputs = [
+            ...user.publicKey.map(String),
+            fullAddress.toString(),
+            chainId.toString(),
+          ];
+          const input = {
+            privateInputs,
+            publicInputs,
+          };
 
-					const registrationHash = poseidon3([
-						chainId,
-						formatPrivKeyForBabyJub(user.privateKey).toString(),
-						fullAddress,
-					]).toString();
+          const registrationHash = poseidon3([
+            chainId,
+            formatPrivKeyForBabyJub(user.privateKey).toString(),
+            fullAddress,
+          ]).toString();
 
-					input.publicInputs.push(registrationHash);
+          input.publicInputs.push(registrationHash);
 
-					const proof = await generateGnarkProof(
-						"REGISTER",
-						JSON.stringify(input),
-					);
+          const proof = await generateGnarkProof(
+            "REGISTER",
+            JSON.stringify(input)
+          );
 
-					const tx = await registrar
-						.connect(user.signer)
-						.register(
-							proof.map(BigInt),
-							publicInputs.map(BigInt) as [bigint, bigint, bigint, bigint, bigint],
-						);
-					await tx.wait();
+          const tx = await registrar
+            .connect(user.signer)
+            .register(
+              proof.map(BigInt),
+              publicInputs.map(BigInt) as [
+                bigint,
+                bigint,
+                bigint,
+                bigint,
+                bigint
+              ]
+            );
+          await tx.wait();
 
           // check if the user is registered
           expect(await registrar.isUserRegistered(user.signer.address)).to.be
@@ -183,7 +199,11 @@ describe("EncryptedERC - Converter", () => {
 
         const fullAddress = BigInt(user.signer.address);
 
-        const publicInputs = [...user.publicKey.map(String), fullAddress.toString(), chainId.toString()];
+        const publicInputs = [
+          ...user.publicKey.map(String),
+          fullAddress.toString(),
+          chainId.toString(),
+        ];
         const input = {
           privateInputs,
           publicInputs,
@@ -199,7 +219,7 @@ describe("EncryptedERC - Converter", () => {
 
         const proof = await generateGnarkProof(
           "REGISTER",
-          JSON.stringify(input),
+          JSON.stringify(input)
         );
 
         await expect(
@@ -207,7 +227,13 @@ describe("EncryptedERC - Converter", () => {
             .connect(user.signer)
             .register(
               proof.map(BigInt),
-              publicInputs.map(BigInt) as [bigint, bigint, bigint, bigint, bigint],
+              publicInputs.map(BigInt) as [
+                bigint,
+                bigint,
+                bigint,
+                bigint,
+                bigint
+              ]
             )
         ).to.be.revertedWithCustomError(registrar, "InvalidChainId");
       });
@@ -215,7 +241,7 @@ describe("EncryptedERC - Converter", () => {
       it("should revert if user is already registered", async () => {
         const user = users[0];
         const network = await ethers.provider.getNetwork();
-        const chainId = BigInt(network.chainId)
+        const chainId = BigInt(network.chainId);
 
         const privateInputs = [
           formatPrivKeyForBabyJub(user.privateKey).toString(),
@@ -223,7 +249,11 @@ describe("EncryptedERC - Converter", () => {
 
         const fullAddress = BigInt(user.signer.address);
 
-        const publicInputs = [...user.publicKey.map(String), fullAddress.toString(), chainId.toString()];
+        const publicInputs = [
+          ...user.publicKey.map(String),
+          fullAddress.toString(),
+          chainId.toString(),
+        ];
         const input = {
           privateInputs,
           publicInputs,
@@ -239,15 +269,22 @@ describe("EncryptedERC - Converter", () => {
 
         const proof = await generateGnarkProof(
           "REGISTER",
-          JSON.stringify(input),
+          JSON.stringify(input)
         );
 
-        await expect(registrar
-          .connect(user.signer)
-          .register(
-            proof.map(BigInt),
-            publicInputs.map(BigInt) as [bigint, bigint, bigint, bigint, bigint],
-          )
+        await expect(
+          registrar
+            .connect(user.signer)
+            .register(
+              proof.map(BigInt),
+              publicInputs.map(BigInt) as [
+                bigint,
+                bigint,
+                bigint,
+                bigint,
+                bigint
+              ]
+            )
         ).to.be.revertedWithCustomError(registrar, "UserAlreadyRegistered");
       });
 
@@ -261,7 +298,10 @@ describe("EncryptedERC - Converter", () => {
         await expect(
           registrar
             .connect(user.signer)
-            .register(validParamsForUser4.proof.map(BigInt), inputs.map(BigInt) as [bigint, bigint, bigint, bigint, bigint])
+            .register(
+              validParamsForUser4.proof.map(BigInt),
+              inputs.map(BigInt) as [bigint, bigint, bigint, bigint, bigint]
+            )
         ).to.be.revertedWithCustomError(registrar, "InvalidRegistrationHash");
       });
     });
@@ -475,25 +515,31 @@ describe("EncryptedERC - Converter", () => {
       it("should revert if amount approved is different from the amount deposited", async () => {
         const ownerUser = users[0];
         const depositAmount = 1_000_000_000n;
-        
+
         // Mint some tokens to the owner
         await feeERC20.connect(owner).mint(owner.address, depositAmount * 10n);
-        
+
         // Approve the deposit
-        await feeERC20.connect(owner).approve(encryptedERC.target, depositAmount);
-        
+        await feeERC20
+          .connect(owner)
+          .approve(encryptedERC.target, depositAmount);
+
         // Create the encrypted value
         const { ciphertext, nonce, authKey } = processPoseidonEncryption(
           [10n],
           ownerUser.publicKey
         );
-        
-        await expect(encryptedERC.connect(owner).deposit(depositAmount, feeERC20.target, [
-          ...ciphertext,
-          ...authKey,
-          nonce,
-        ])).to.be.revertedWithCustomError(encryptedERC, "TransferFailed");
-      })
+
+        await expect(
+          encryptedERC
+            .connect(owner)
+            .deposit(depositAmount, feeERC20.target, [
+              ...ciphertext,
+              ...authKey,
+              nonce,
+            ])
+        ).to.be.revertedWithCustomError(encryptedERC, "TransferFailed");
+      });
 
       // this test should be here because it needs the encryptedERC to be initialized and deposit to be done
       it("get tokens should return the proper addresses", async () => {
@@ -514,7 +560,9 @@ describe("EncryptedERC - Converter", () => {
       it("should revert if the token is blacklisted", async () => {
         await expect(
           encryptedERC.connect(users[0].signer).deposit(
-            1n, blacklistedERC20.target, Array.from({ length: 7 }, () => 1n)
+            1n,
+            blacklistedERC20.target,
+            Array.from({ length: 7 }, () => 1n)
           )
         ).to.be.reverted;
       });
@@ -764,40 +812,39 @@ describe("EncryptedERC - Converter", () => {
       });
     });
 
-
     describe("Blacklisting Tokens", () => {
       it("set token as blacklisted", async () => {
-
-        await encryptedERC.connect(owner).setTokenBlacklist(
-          blacklistedERC20.target,
-          true,
-        );
+        await encryptedERC
+          .connect(owner)
+          .setTokenBlacklist(blacklistedERC20.target, true);
 
         const isBlacklisted = await encryptedERC.isTokenBlacklisted(
-          blacklistedERC20.target,
+          blacklistedERC20.target
         );
-          expect(isBlacklisted).to.equal(true);
+        expect(isBlacklisted).to.equal(true);
       });
 
       it("should revert if user is not owner", async () => {
         const user = users[1].signer;
 
         await expect(
-          encryptedERC.connect(user).setTokenBlacklist(blacklistedERC20.target, true)
+          encryptedERC
+            .connect(user)
+            .setTokenBlacklist(blacklistedERC20.target, true)
         ).to.be.reverted;
       });
 
       it("should revert if token is blacklisted", async () => {
         const user = users[0];
-        
+
         await expect(
           encryptedERC.connect(user.signer).deposit(
             1n,
             blacklistedERC20.target,
-            Array.from({ length: 7 }, () => 1n),
-          ),
-          ).to.be.reverted;
-        });
+            Array.from({ length: 7 }, () => 1n)
+          )
+        ).to.be.reverted;
+      });
     });
 
     describe("Withdrawing Tokens - Lower ERC20 Decimals (6)", () => {
