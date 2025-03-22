@@ -1,24 +1,28 @@
+<div align="center">
+  <img src="images/banner.png">
+</div>
+
+---
+
 # Encrypted ERC-20 Protocol
 
-The Encrypted ERC-20 (eERC) is a protocol that enables efficient confidential token transfers on Avalanche blockchain. eERC does not require modification at the protocol level or off-chain actors and relies purely on zk-SNARKs and homomorphic encryption. It comes with various features such as:
+The Encrypted ERC-20 (eERC) standard enables secure and confidential token transfers on Avalanche blockchains. Leveraging zk-SNARKs and partially homomorphic encryption, the eERC protocol offers robust privacy without requiring protocol-level modifications or off-chain intermediaries.
 
-- Confidential Transactions: Conceals the token balances of users and the amounts in each transaction.
-- Supports large integers: Allows for the use of integers up to 2^128 bits.
-- Client-side operations: Encryption, decryption and proof generation are conducted by the users from client side.
-- Fully on-chain Nature: Operates entirely on-chain without the need for relayers or off-chain actors.
-- Native compliance: Auditors can audit the transaction details.
+## Key features
 
-## Overview
+- Confidential Transactions: User balances and transaction amounts remain completely hidden, ensuring financial privacy.
+- Large Integers: Efficiently handles token amounts up to 128 bits (2^128), accommodating substantial financial transactions.
+- Client-Side Operations: Users retain control, performing encryption, decryption, and zk-proof generation directly on their own devices.
+- Fully On-chain Nature: Operates entirely on-chain without the need for relayers or off-chain actors.
+- Built-in Compliance: Supports external auditors, ensuring regulatory compliance.
 
-TODO
+## File structure
 
-# File structure
-
-- [contracts](#contracts) Smart contract source files for the eERC protocol.
-- [scripts](#scripts) Utility and deployment scripts for contracts.
-- [src](#src) TODO
-- [tests](#tests) Test scripts and files of eERC protocol.
-- [zk-SNARKs](#zk) Implementation of zero-knowledge proof components used by eERC.
+- [contracts](#contracts) Smart contract source files
+- [scripts](#scripts) Utility and deployment scripts
+- [src](#src) Encryption utilities for TypeScript
+- [tests](#tests) Test scripts and helpers
+- [zk](#zk) Gnark-based implementations of zero-knowledge proof components
 
 ## Getting Started
 
@@ -27,7 +31,7 @@ TODO
 You need following dependencies for setup:
 
 - `NodeJS >= v16.x `
-- `Golang >= 1.20.x `
+- `Golang >= 1.23.x `
 
 ### Installation
 
@@ -43,12 +47,6 @@ You need following dependencies for setup:
 
    Note: This command will run a bash script to compile gnark's circuits, if this does not work:
    In [zk](#zk) directory run the following command to build manually:
-
-   On x64:
-
-   ```sh
-   go build -o ../outputs/eerc20_zk_x64
-   ```
 
    On arm64:
 
@@ -66,21 +64,21 @@ npx hardhat coverage
 
 ## 📊 Performance Overview
 
-### ⛽ On-Chain Gas Costs (Fuji Testnet)
+### ⛽ Avg. On-Chain Gas Costs (C-Chain Mainnet)
 
 | **Operation**    | **Gas Cost**  |
 | ---------------- | ------------- |
-| Register         | 273,085 gas   |
-| Deposit          | 556,273 gas   |
+| Register         | 315,972 gas   |
+| Deposit          | _TODO_        |
 | Withdraw         | _TODO_        |
-| Private Burn     | 646,666 gas   |
-| Private Mint     | 677,304 gas   |
-| Private Transfer | 1,036,451 gas |
-| Update Auditor   | 103,753 gas   |
+| Private Burn     | 872,351 gas   |
+| Private Mint     | 704,179 gas   |
+| Private Transfer | 929,429 gas   |
+| Update Auditor   | 103,800 gas   |
 
-### ⏱️ Circuit Proving Times
+### ⏱️ Circuit Benchmarks for Proof Generation
 
-Tested on a MacBook (M3 Pro CPU):
+Tested on M3 Pro CPU:
 
 | **Operation**    | **Proving Time** |
 | ---------------- | ---------------- |
