@@ -51,7 +51,7 @@ You need following dependencies for setup:
    On arm64:
 
    ```sh
-   go build -o ../outputs/eerc20_zk
+   go build -o ./build/encryptedERC
    ```
 
 ### Run Tests/Coverage
@@ -66,15 +66,15 @@ npx hardhat coverage
 
 ### ⛽ Avg. On-Chain Gas Costs (C-Chain Mainnet)
 
-| **Operation**    | **Gas Cost**  |
-| ---------------- | ------------- |
-| Register         | 315,972 gas   |
-| Deposit          | _TODO_        |
-| Withdraw         | _TODO_        |
-| Private Burn     | 872,351 gas   |
-| Private Mint     | 704,179 gas   |
-| Private Transfer | 929,429 gas   |
-| Update Auditor   | 103,800 gas   |
+| **Operation**    | **Gas Cost** |
+| ---------------- | ------------ |
+| Register         | 315,972 gas  |
+| Deposit          | _TODO_       |
+| Withdraw         | _TODO_       |
+| Private Burn     | 872,351 gas  |
+| Private Mint     | 704,179 gas  |
+| Private Transfer | 929,429 gas  |
+| Update Auditor   | 103,800 gas  |
 
 ### ⏱️ Circuit Benchmarks for Proof Generation
 
