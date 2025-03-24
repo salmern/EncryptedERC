@@ -4,11 +4,10 @@ import "hardhat-gas-reporter";
 import "@nomicfoundation/hardhat-chai-matchers";
 import "@nomicfoundation/hardhat-ethers";
 
+import dotenv from "dotenv";
+dotenv.config();
 
-import dotenv from "dotenv"
-dotenv.config()
-
-const RPC_URL = process.env.RPC_URL || "https://api.avax.network/ext/bc/C/rpc"
+const RPC_URL = process.env.RPC_URL || "https://api.avax.network/ext/bc/C/rpc";
 
 const config: HardhatUserConfig = {
 	solidity: {
@@ -26,17 +25,17 @@ const config: HardhatUserConfig = {
 			forking: {
 				url: RPC_URL,
 				blockNumber: 59121339,
-				enabled: process.env.FORKING ? true : false,
+				enabled: !!process.env.FORKING,
 			},
 		},
 	},
 	gasReporter: {
-		enabled: process.env.REPORT_GAS ? true : false,
+		enabled: !!process.env.REPORT_GAS,
 		currency: "USD",
 		coinmarketcap: process.env.COINMARKETCAP_API_KEY,
 		excludeContracts: ["contracts/mocks/"],
 		outputFile: "gas-report.txt",
-		L1: 'avalanche',
+		L1: "avalanche",
 		showMethodSig: true,
 	},
 };
