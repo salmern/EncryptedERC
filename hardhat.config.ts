@@ -1,4 +1,5 @@
 import type { HardhatUserConfig } from "hardhat/config";
+import "@typechain/hardhat";
 import "solidity-coverage";
 import "hardhat-gas-reporter";
 import "@nomicfoundation/hardhat-chai-matchers";

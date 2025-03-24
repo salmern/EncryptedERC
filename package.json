@@ -6,6 +6,7 @@
 		"@nomicfoundation/hardhat-chai-matchers": "^2.0.8",
 		"@nomicfoundation/hardhat-ethers": "^3.0.8",
 		"@openzeppelin/contracts": "^5.1.0",
+		"@typechain/hardhat": "^9.1.0",
 		"@types/jest": "^29.5.14",
 		"@types/mocha": "^10.0.10",
 		"@zk-kit/baby-jubjub": "^1.0.3",
@@ -25,5 +26,9 @@
 		"lint": "npm run lint:sol && npm run lint:ts"
 	},
 	"keywords": [],
-	"author": ""
+	"author": "",
+	"repository": {
+		"url": "https://github.com/ava-labs/EncryptedERC",
+		"type": "git"
+	}
 }
