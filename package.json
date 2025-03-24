@@ -2,15 +2,19 @@
   "name": "encryptederc",
   "version": "1.0.0",
   "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.8",
+    "@nomicfoundation/hardhat-ethers": "^3.0.8",
     "@openzeppelin/contracts": "^5.1.0",
+    "@types/jest": "^29.5.14",
+    "@types/mocha": "^10.0.10",
     "@zk-kit/baby-jubjub": "^1.0.3",
     "dotenv": "^16.4.7",
     "hardhat": "^2.22.15",
     "hardhat-gas-reporter": "^2.2.2",
     "maci-crypto": "^2.0.0",
     "poseidon-lite": "^0.3.0",
-    "solhint": "^5.0.5"
+    "solhint": "^5.0.5",
+    "solidity-coverage": "^0.8.14"
   },
   "scripts": {
     "test": "mocha 'src/**/*.test.js'",
