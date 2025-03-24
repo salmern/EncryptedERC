@@ -39,7 +39,9 @@ jobs:
         run: |
           touch eERC-tests.txt && \
           npx hardhat coverage | tee eERC-tests.txt || true && \
-          cat eERC-tests.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' ? >> $GITHUB_STEP_SUMMARY && \
+          cat eERC-tests.txt >> $GITHUB_STEP_SUMMARY && \
+          echo '```' ? >> $GITHUB_STEP_SUMMARY
 
       - name: "Run linter"
-        run: "npm run lint:sol"
+        run: "npm run lint"
