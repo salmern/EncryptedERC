@@ -1,10 +1,14 @@
-// SPDX-License-Identifier: SEE LICENSE IN LICENSE
+// (c) 2024, Ava Labs, Inc. All rights reserved.
+// See the file LICENSE for licensing terms.
+
+// SPDX-License-Identifier: Ecosystem
+
 pragma solidity 0.8.27;
 
 import {Ownable2Step, Ownable} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 contract TokenTracker is Ownable2Step {
-    // starting from 1 becase 0 is for standalone version of the EncryptedERC
+    // starting from 1 because 0 is for standalone version of the EncryptedERC
     uint256 public nextTokenId = 1;
     // indicates if the contract is a converter
     bool public isConverter;
@@ -19,8 +23,7 @@ contract TokenTracker is Ownable2Step {
     address[] public tokens;
 
     // token address to boolean
-    mapping(address tokenAddress => bool isBlacklisted)
-        public blacklistedTokens;
+    mapping(address tokenAddress => bool isBlacklisted) public blacklistedTokens;
 
     error TokenBlacklisted(address token);
 
@@ -33,10 +36,7 @@ contract TokenTracker is Ownable2Step {
      * @param blacklisted Boolean indicating if token should be blacklisted
      * @dev Only owner can call this function
      */
-    function setTokenBlacklist(
-        address token,
-        bool blacklisted
-    ) external onlyOwner {
+    function setTokenBlacklist(address token, bool blacklisted) external onlyOwner {
         blacklistedTokens[token] = blacklisted;
     }
 
@@ -51,9 +51,7 @@ contract TokenTracker is Ownable2Step {
      * @param tokenAddress Address of the token to check
      * @return bool True if token is blacklisted
      */
-    function isTokenBlacklisted(
-        address tokenAddress
-    ) public view returns (bool) {
+    function isTokenBlacklisted(address tokenAddress) public view returns (bool) {
         return blacklistedTokens[tokenAddress];
     }
 

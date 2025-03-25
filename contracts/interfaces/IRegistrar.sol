@@ -1,4 +1,8 @@
-// SPDX-License-Identifier: SEE LICENSE IN LICENSE
+// (c) 2024, Ava Labs, Inc. All rights reserved.
+// See the file LICENSE for licensing terms.
+
+// SPDX-License-Identifier: Ecosystem
+
 pragma solidity 0.8.27;
 
 interface IRegistrar {
@@ -7,9 +11,7 @@ interface IRegistrar {
      * @param user Address of the user.
      * @return publicKey The public key of the user as an array of two uint256 values.
      */
-    function getUserPublicKey(
-        address user
-    ) external view returns (uint256[2] memory publicKey);
+    function getUserPublicKey(address user) external view returns (uint256[2] memory publicKey);
 
     /**
      * @dev Returns true if the user is registered.
