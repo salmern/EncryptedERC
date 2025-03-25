@@ -13,5 +13,9 @@ interface IEncryptedERC {
      * @param pct Balance percentage array
      * @dev Only the registrar can set the balance percentage
      */
-    function setUserBalancePCT(address user, uint256 tokenId, uint256[7] memory pct) external;
+    function setUserBalancePCT(
+        address user,
+        uint256 tokenId,
+        uint256[7] memory pct
+    ) external;
 }

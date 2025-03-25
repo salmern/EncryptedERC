@@ -11,7 +11,11 @@ contract SimpleERC20 is ERC20 {
     // token decimals
     uint8 public decimals_;
 
-    constructor(string memory name, string memory symbol, uint8 decimal) ERC20(name, symbol) {
+    constructor(
+        string memory name,
+        string memory symbol,
+        uint8 decimal
+    ) ERC20(name, symbol) {
         decimals_ = decimal;
     }
 

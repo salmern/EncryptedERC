@@ -11,7 +11,9 @@ interface IRegistrar {
      * @param user Address of the user.
      * @return publicKey The public key of the user as an array of two uint256 values.
      */
-    function getUserPublicKey(address user) external view returns (uint256[2] memory publicKey);
+    function getUserPublicKey(
+        address user
+    ) external view returns (uint256[2] memory publicKey);
 
     /**
      * @dev Returns true if the user is registered.

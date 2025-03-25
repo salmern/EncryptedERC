@@ -15,9 +15,13 @@ contract FeeERC20 is SimpleERC20 {
     uint256 public feeRate;
     address public feeCollector;
 
-    constructor(string memory name, string memory symbol, uint8 decimal, uint256 feeRates, address feeCollectors)
-        SimpleERC20(name, symbol, decimal)
-    {
+    constructor(
+        string memory name,
+        string memory symbol,
+        uint8 decimal,
+        uint256 feeRates,
+        address feeCollectors
+    ) SimpleERC20(name, symbol, decimal) {
         feeRate = feeRates;
         feeCollector = feeCollectors;
     }
@@ -29,7 +33,11 @@ contract FeeERC20 is SimpleERC20 {
      * @param amount The amount to transfer
      * @return A boolean that indicates if the operation was successful
      */
-    function transferFrom(address sender, address recipient, uint256 amount) public virtual override returns (bool) {
+    function transferFrom(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) public virtual override returns (bool) {
         address spender = _msgSender();
 
         // Calculate fee

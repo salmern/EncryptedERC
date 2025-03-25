@@ -9,7 +9,8 @@ import {EncryptedBalance, EGCT, BalanceHistory, AmountPCT} from "./types/Types.s
 import {BabyJubJub} from "./libraries/BabyJubJub.sol";
 
 contract EncryptedUserBalances {
-    mapping(address user => mapping(uint256 tokenId => EncryptedBalance balance)) public balances;
+    mapping(address user => mapping(uint256 tokenId => EncryptedBalance balance))
+        public balances;
 
     /**
      *
@@ -18,7 +19,9 @@ contract EncryptedUserBalances {
      * @return nonce Nonce
      * @dev Returns the balance of the user for the standalone token (tokenId = 0)
      */
-    function balanceOfStandalone(address user)
+    function balanceOfStandalone(
+        address user
+    )
         external
         view
         returns (
@@ -39,7 +42,10 @@ contract EncryptedUserBalances {
      * @return nonce Nonce
      * @dev Returns the balance of the user for the given token
      */
-    function balanceOf(address user, uint256 tokenId)
+    function balanceOf(
+        address user,
+        uint256 tokenId
+    )
         public
         view
         returns (
@@ -51,7 +57,13 @@ contract EncryptedUserBalances {
         )
     {
         EncryptedBalance storage balance = balances[user][tokenId];
-        return (balance.eGCT, balance.nonce, balance.amountPCTs, balance.balancePCT, balance.transactionIndex);
+        return (
+            balance.eGCT,
+            balance.nonce,
+            balance.amountPCTs,
+            balance.balancePCT,
+            balance.transactionIndex
+        );
     }
 
     ///////////////////////////////////////////////////
@@ -63,7 +75,12 @@ contract EncryptedUserBalances {
      * @param tokenId Token ID
      * @dev Adds the amount to the user's balance
      */
-    function _addToUserBalance(address user, uint256 tokenId, EGCT memory eGCT, uint256[7] memory amountPCT) internal {
+    function _addToUserBalance(
+        address user,
+        uint256 tokenId,
+        EGCT memory eGCT,
+        uint256[7] memory amountPCT
+    ) internal {
         EncryptedBalance storage balance = balances[user][tokenId];
 
         // if user balance is not initialized, initialize it
@@ -113,7 +130,11 @@ contract EncryptedUserBalances {
      *      so the balance hash is unique for each transaction and sender must prove
      *      that the balance hash is known beforehand with the current nonce
      */
-    function _addToUserHistory(address user, uint256 tokenId, uint256[7] memory amountPCT) internal {
+    function _addToUserHistory(
+        address user,
+        uint256 tokenId,
+        uint256[7] memory amountPCT
+    ) internal {
         EncryptedBalance storage balance = balances[user][tokenId];
 
         uint256 nonce = balance.nonce;
@@ -121,10 +142,15 @@ contract EncryptedUserBalances {
         balanceHash = uint256(keccak256(abi.encode(balanceHash, nonce)));
 
         // mark the balance hash as valid
-        balance.balanceList[balanceHash] = BalanceHistory({index: balance.transactionIndex, isValid: true});
+        balance.balanceList[balanceHash] = BalanceHistory({
+            index: balance.transactionIndex,
+            isValid: true
+        });
 
         // add the amount pct to the balance
-        balance.amountPCTs.push(AmountPCT({pct: amountPCT, index: balance.transactionIndex}));
+        balance.amountPCTs.push(
+            AmountPCT({pct: amountPCT, index: balance.transactionIndex})
+        );
 
         balance.transactionIndex++;
     }
@@ -145,7 +171,10 @@ contract EncryptedUserBalances {
         uint256 balanceHash = _hashEGCT(balance.eGCT);
         balanceHash = uint256(keccak256(abi.encode(balanceHash, nonce)));
 
-        balance.balanceList[balanceHash] = BalanceHistory({index: balance.transactionIndex, isValid: true});
+        balance.balanceList[balanceHash] = BalanceHistory({
+            index: balance.transactionIndex,
+            isValid: true
+        });
 
         balance.transactionIndex++;
     }
@@ -157,14 +186,20 @@ contract EncryptedUserBalances {
      * @dev Instead of deleting the history mapping one by one, we can just
      *      increase the nonce by one and the old history will be mark as invalid
      */
-    function _deleteUserHistory(address user, uint256 tokenId, uint256 transactionIndex) internal {
+    function _deleteUserHistory(
+        address user,
+        uint256 tokenId,
+        uint256 transactionIndex
+    ) internal {
         EncryptedBalance storage balance = balances[user][tokenId];
 
         for (uint256 i = balance.amountPCTs.length; i > 0; i--) {
             uint256 index = i - 1;
 
             if (balance.amountPCTs[index].index <= transactionIndex) {
-                balance.amountPCTs[index] = balance.amountPCTs[balance.amountPCTs.length - 1];
+                balance.amountPCTs[index] = balance.amountPCTs[
+                    balance.amountPCTs.length - 1
+                ];
                 balance.amountPCTs.pop();
             }
         }
@@ -181,13 +216,15 @@ contract EncryptedUserBalances {
      * @return isValid True if the balance hash is valid
      * @dev Hash the provided eGCT with the current nonce and check if it's in the history
      */
-    function _isBalanceValid(address user, uint256 tokenId, uint256 balanceHash)
-        internal
-        view
-        returns (bool, uint256)
-    {
+    function _isBalanceValid(
+        address user,
+        uint256 tokenId,
+        uint256 balanceHash
+    ) internal view returns (bool, uint256) {
         uint256 nonce = balances[user][tokenId].nonce;
-        uint256 hashWithNonce = uint256(keccak256(abi.encode(balanceHash, nonce)));
+        uint256 hashWithNonce = uint256(
+            keccak256(abi.encode(balanceHash, nonce))
+        );
         return (
             balances[user][tokenId].balanceList[hashWithNonce].isValid,
             balances[user][tokenId].balanceList[hashWithNonce].index
@@ -199,6 +236,11 @@ contract EncryptedUserBalances {
      * @return hash of the Elgamal Ciphertext CRH(eGCT)
      */
     function _hashEGCT(EGCT memory eGCT) internal pure returns (uint256) {
-        return uint256(keccak256(abi.encode(eGCT.c1.x, eGCT.c1.y, eGCT.c2.x, eGCT.c2.y)));
+        return
+            uint256(
+                keccak256(
+                    abi.encode(eGCT.c1.x, eGCT.c1.y, eGCT.c2.x, eGCT.c2.y)
+                )
+            );
     }
 }

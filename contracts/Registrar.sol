@@ -13,7 +13,8 @@ import {UserAlreadyRegistered, InvalidChainId, InvalidSender, InvalidRegistratio
 import {BabyJubJub} from "./libraries/BabyJubJub.sol";
 
 contract Registrar {
-    address public constant BURN_USER = 0x1111111111111111111111111111111111111111;
+    address public constant BURN_USER =
+        0x1111111111111111111111111111111111111111;
 
     // registration verifier
     IRegistrationVerifier public registrationVerifier;
@@ -45,7 +46,10 @@ contract Registrar {
      * @param proof Proof of the user
      * @param input Input of the proof
      */
-    function register(uint256[8] calldata proof, uint256[5] calldata input) external {
+    function register(
+        uint256[8] calldata proof,
+        uint256[5] calldata input
+    ) external {
         address account = address(uint160(input[2]));
 
         if (msg.sender != account) {
@@ -95,7 +99,9 @@ contract Registrar {
      *
      * @return publicKey Public key of the user as [x, y] coordinates
      */
-    function getUserPublicKey(address user) public view returns (uint256[2] memory publicKey) {
+    function getUserPublicKey(
+        address user
+    ) public view returns (uint256[2] memory publicKey) {
         return [userPublicKeys[user].x, userPublicKeys[user].y];
     }
 
@@ -105,7 +111,11 @@ contract Registrar {
      * @param registrationHash Registration hash
      * @dev Internal function for setting user public key
      */
-    function _register(address user, Point memory publicKey, uint256 registrationHash) internal {
+    function _register(
+        address user,
+        Point memory publicKey,
+        uint256 registrationHash
+    ) internal {
         userPublicKeys[user] = publicKey;
         isRegistered[registrationHash] = true;
         emit Register(user, publicKey);

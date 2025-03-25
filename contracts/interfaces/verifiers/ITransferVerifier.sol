@@ -6,5 +6,8 @@
 pragma solidity 0.8.27;
 
 interface ITransferVerifier {
-    function verifyProof(uint256[8] calldata proof, uint256[32] calldata input) external view;
+    function verifyProof(
+        uint256[8] calldata proof,
+        uint256[32] calldata input
+    ) external view;
 }
