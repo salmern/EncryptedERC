@@ -1,4 +1,4 @@
-// (c) 2024, Ava Labs, Inc. All rights reserved.
+// (c) 2025, Ava Labs, Inc. All rights reserved.
 // See the file LICENSE for licensing terms.
 
 // SPDX-License-Identifier: Ecosystem
