@@ -1,5 +1,5 @@
 import { ethers } from "hardhat";
-import { deployLibrary, deployVerifiers } from "../test/helpers";
+import { deployLibrary } from "../test/helpers";
 import { EncryptedERC__factory } from "../typechain-types";
 import { DECIMALS } from "./constants";
 import { deployProductionVerifiers } from "./helpers";
@@ -8,6 +8,7 @@ const main = async () => {
 	// get deployer
 	const [deployer] = await ethers.getSigners();
 
+	// deploy verifiers
 	const {
 		registrationVerifier,
 		mintVerifier,
@@ -29,7 +30,7 @@ const main = async () => {
 	});
 	const encryptedERC_ = await encryptedERCFactory.connect(deployer).deploy({
 		registrar: registrar.target,
-		isConverter: true,
+		isConverter: true, // This is a converter eERC
 		name: "Test",
 		symbol: "TEST",
 		mintVerifier,

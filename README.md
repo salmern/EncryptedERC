@@ -44,6 +44,9 @@ You need following dependencies for setup:
    ```sh
    npm install
    ```
+   ```sh
+   npx hardhat compile
+   ```
 
    Note: This command will run a bash script to compile gnark's circuits, if this does not work:
    In [zk](#zk) directory run the following command to build manually:

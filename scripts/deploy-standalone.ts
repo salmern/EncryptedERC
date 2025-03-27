@@ -30,7 +30,7 @@ const main = async () => {
 	});
 	const encryptedERC_ = await encryptedERCFactory.connect(deployer).deploy({
 		registrar: registrar.target,
-		isConverter: false,
+		isConverter: false, // This is a standalone eERC
 		name: "Test",
 		symbol: "TEST",
 		mintVerifier,
