@@ -49,7 +49,7 @@ const main = async () => {
 	await tx.wait();
 
 	console.log("ERC20 deployed at:", erc20.target);
-	console.log("Minted 1 TEST to deployer");
+	console.log("Minted 10000 TEST to deployer");
 
 	console.table({
 		registrationVerifier,
