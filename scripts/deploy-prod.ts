@@ -1,4 +1,3 @@
-import type { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/dist/src/signer-with-address";
 import { ethers } from "hardhat";
 import { deployLibrary } from "../test/helpers";
 import {
@@ -6,41 +5,7 @@ import {
 	Registrar__factory,
 	SimpleERC20__factory,
 } from "../typechain-types/factories/contracts";
-import { ProductionMintVerifier__factory } from "../typechain-types/factories/contracts/x/g16_eerc_mint.sol";
-import { ProductionRegisterVerifier__factory } from "../typechain-types/factories/contracts/x/g16_eerc_register.sol";
-import { ProductionTransferVerifier__factory } from "../typechain-types/factories/contracts/x/g16_eerc_transfer.sol";
-import { ProductionWithdrawVerifier__factory } from "../typechain-types/factories/contracts/x/g16_eerc_withdraw.sol/ProductionWithdrawVerifier__factory";
-
-const deployProductionVerifiers = async (signer: SignerWithAddress) => {
-	const registrationVerifierFactory = new ProductionRegisterVerifier__factory(
-		signer,
-	);
-	const registrationVerifier = await registrationVerifierFactory.deploy();
-	await registrationVerifier.waitForDeployment();
-
-	const mintVerifierFactory = new ProductionMintVerifier__factory(signer);
-	const mintVerifier = await mintVerifierFactory.deploy();
-	await mintVerifier.waitForDeployment();
-
-	const withdrawVerifierFactory = new ProductionWithdrawVerifier__factory(
-		signer,
-	);
-	const withdrawVerifier = await withdrawVerifierFactory.deploy();
-	await withdrawVerifier.waitForDeployment();
-
-	const transferVerifierFactory = new ProductionTransferVerifier__factory(
-		signer,
-	);
-	const transferVerifier = await transferVerifierFactory.deploy();
-	await transferVerifier.waitForDeployment();
-
-	return {
-		registrationVerifier: registrationVerifier.target.toString(),
-		mintVerifier: mintVerifier.target.toString(),
-		withdrawVerifier: withdrawVerifier.target.toString(),
-		transferVerifier: transferVerifier.target.toString(),
-	};
-};
+import { deployProductionVerifiers } from "./helpers";
 
 const main = async () => {
 	const DECIMALS = 4;
@@ -85,14 +50,14 @@ const main = async () => {
 		"contracts/libraries/BabyJubJub.sol:BabyJubJub": babyJubJub,
 	});
 	const encryptedERC = await encryptedERCFactory.connect(deployer).deploy({
-		_registrar: registrar.target,
-		_isConverter: false, // lets leave it false for now
-		_name: "Encrypted ERC",
-		_symbol: "EERC",
-		_mintVerifier: mintVerifier,
-		_withdrawVerifier: withdrawVerifier,
-		_transferVerifier: transferVerifier,
-		_decimals: DECIMALS,
+		registrar: registrar.target,
+		isConverter: false, // lets leave it false for now
+		name: "Encrypted ERC",
+		symbol: "EERC",
+		mintVerifier: mintVerifier,
+		withdrawVerifier: withdrawVerifier,
+		transferVerifier: transferVerifier,
+		decimals: DECIMALS,
 	});
 	await encryptedERC.waitForDeployment();
 
