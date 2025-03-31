@@ -9,7 +9,6 @@ template PoseidonDecrypt(l) {
     while (decryptedLength % 3 != 0) {
         decryptedLength += 1;
     }
-    // e.g. if l == 4, decryptedLength == 6
 
     signal input ciphertext[decryptedLength + 1];
     signal input nonce;
@@ -22,7 +21,6 @@ template PoseidonDecrypt(l) {
     var n = (decryptedLength + 1) \ 3;
 
     component strategies[n + 1];
-    // Iterate Poseidon on the initial state
     strategies[0] = PoseidonEx(3, 4);
     strategies[0].initialState <== 0;
     strategies[0].inputs[0] <== key[0];
@@ -30,12 +28,10 @@ template PoseidonDecrypt(l) {
     strategies[0].inputs[2] <== nonce + (l * two128);
 
     for (var i = 0; i < n; i ++) {
-        // Release three elements of the message
         for (var j = 0; j < 3; j ++) {
             decrypted[i * 3 + j] <== ciphertext[i * 3 + j] - strategies[i].out[j + 1];
         }
 
-        // Iterate Poseidon on the state
         strategies[i + 1] = PoseidonEx(3, 4);
         strategies[i + 1].initialState <== strategies[i].out[0];
         for (var j = 0; j < 3; j ++) {
@@ -118,12 +114,8 @@ template ElGamalEncrypt() {
 
 }
 
-/*
-    This is the ElGamal Decryption scheme over BabyJub curve while preserving the additively homomorphic property.
-    The scheme takes the two points of the ciphertext (c1, c2) and the private key and outputs the decrypted point.
-    Be careful to use the same randomness for the encryption of the two messages. TODO! (add another randomness for the receiver's fraction part)
-    After decryption, the receiver needs to recover the scalar message from the point, using BSGS or Pollard's Rho. Thus, it is limited up to 2^40 - 1 (1099511627775) messages.
-*/
+// ElGamal Decryption scheme over BabyJub curve while preserving the additively homomorphic property.
+// The scheme takes the two points of the ciphertext (c1, c2) and the private key and outputs the message, mapped to a point.
 template ElGamalDecrypt() {
     signal input c1[2];
     signal input c2[2];
@@ -194,6 +186,7 @@ template CheckValue() {
     valueToPoint.Ax === checkValue.outx;
     valueToPoint.Ay === checkValue.outy;
 }
+
 
 template CheckReceiverValue() {
     signal input receiverValue;
