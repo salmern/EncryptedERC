@@ -155,7 +155,7 @@ template CheckPublicKey() {
     signal input pubKey[2];
     
     // Verify the private key is less than the base order
-    assert(privKey < 2736030358979909402780800718157159386076813972158567259200215660948447373041 -1);
+    assert(privKey < 2736030358979909402780800718157159386076813972158567259200215660948447373041);
 
     component checkPK = BabyPbk();
     checkPK.in <== privKey;
@@ -171,7 +171,7 @@ template CheckValue() {
     signal input valueC2[2];
 
     // Verify the value is less than the base order
-    assert(value < 2736030358979909402780800718157159386076813972158567259200215660948447373041 - 1);
+    assert(value < 2736030358979909402780800718157159386076813972158567259200215660948447373041);
 
     component checkValue = ElGamalDecrypt();
     checkValue.c1[0] <== valueC1[0];
@@ -220,7 +220,7 @@ template CheckPCT() {
     signal input value;
 
     // Verify the random is less than the base order
-    assert(random < 2736030358979909402780800718157159386076813972158567259200215660948447373041 - 1);
+    assert(random < 2736030358979909402780800718157159386076813972158567259200215660948447373041);
 
     component checkAuthKey = BabyPbk();
     checkAuthKey.in <== random;
@@ -241,6 +241,8 @@ template CheckPCT() {
 
 
     decryptedPCT.decrypted[0] === value;
+    decryptedPCT.decrypted[1] === 0;
+    decryptedPCT.decrypted[2] === 0;
 }
 
 template CheckNullifierHash() {
