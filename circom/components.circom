@@ -17,12 +17,7 @@ template PoseidonDecrypt(l) {
     signal output decrypted[decryptedLength];
 
     var two128 = 2 ** 128;
-
-    // The nonce must be less than 2 ^ 128
-    component lt = LessThan(252);
-    lt.in[0] <== nonce;
-    lt.in[1] <== two128;
-    lt.out === 1;
+    assert(nonce < two128);
 
     var n = (decryptedLength + 1) \ 3;
 
@@ -85,10 +80,9 @@ template BabyScalarMul() {
     Ay  <== mulAny.out[1];
 }
 
-/*
-    This is the ElGamal Encryption scheme over BabyJub curve while preserving the additively homomorphic property.
-    The scheme maps a scalar to a point on the curve and then adds it to the public key point. It outputs the two points of the resulting ciphertext (c1, c2).
-*/
+
+// ElGamal encryption over BabyJubJub curve while preserving the additively homomorphic property.
+// The scheme maps a scalar to a point on the curve and then adds it to the public key point. It outputs the two points of the resulting ciphertext (c1, c2).
 template ElGamalEncrypt() {
     signal input random;
     signal input pk[2];
@@ -117,11 +111,8 @@ template ElGamalEncrypt() {
     addRes.x2 <== pkandr.out[0];
     addRes.y2 <== pkandr.out[1];
 
-    component c1point = BabyPbk();
-    c1point.in <== random;
-
-    encryptedC1X <== c1point.Ax;
-    encryptedC1Y <== c1point.Ay;
+    encryptedC1X <== randomToPoint.Ax;
+    encryptedC1Y <== randomToPoint.Ay;
     encryptedC2X <== addRes.xout;
     encryptedC2Y <== addRes.yout;
 
@@ -170,17 +161,15 @@ template ElGamalDecrypt() {
 template CheckPublicKey() {
     signal input privKey;
     signal input pubKey[2];
-
-    signal baseOrder <== 2736030358979909402780800718157159386076813972158567259200215660948447373041;
     
     // Verify the private key is less than the base order
-    assert(privKey < baseOrder -1);
+    assert(privKey < 2736030358979909402780800718157159386076813972158567259200215660948447373041 -1);
 
     component checkPK = BabyPbk();
     checkPK.in <== privKey;
 
-    assert(checkPK.Ax == pubKey[0]);
-    assert(checkPK.Ay == pubKey[1]);
+    checkPK.Ax === pubKey[0];
+    checkPK.Ay === pubKey[1];
 }
 
 template CheckValue() {
@@ -189,9 +178,8 @@ template CheckValue() {
     signal input valueC1[2];
     signal input valueC2[2];
 
-    signal baseOrder <== 2736030358979909402780800718157159386076813972158567259200215660948447373041;
-
-    assert(value < baseOrder - 1);
+    // Verify the value is less than the base order
+    assert(value < 2736030358979909402780800718157159386076813972158567259200215660948447373041 - 1);
 
     component checkValue = ElGamalDecrypt();
     checkValue.c1[0] <== valueC1[0];
@@ -203,8 +191,8 @@ template CheckValue() {
     component valueToPoint = BabyPbk();
     valueToPoint.in <== value;
 
-    assert(valueToPoint.Ax == checkValue.outx);
-    assert(valueToPoint.Ay == checkValue.outy);
+    valueToPoint.Ax === checkValue.outx;
+    valueToPoint.Ay === checkValue.outy;
 }
 
 template CheckReceiverValue() {
@@ -224,10 +212,10 @@ template CheckReceiverValue() {
     receiverValueEncrypt.msg[0] <== receiverValueToPoint.Ax;
     receiverValueEncrypt.msg[1] <== receiverValueToPoint.Ay;
 
-    assert(receiverValueEncrypt.encryptedC1X == receiverValueC1[0]);
-    assert(receiverValueEncrypt.encryptedC1Y == receiverValueC1[1]);
-    assert(receiverValueEncrypt.encryptedC2X == receiverValueC2[0]);
-    assert(receiverValueEncrypt.encryptedC2Y == receiverValueC2[1]);
+    receiverValueEncrypt.encryptedC1X === receiverValueC1[0];
+    receiverValueEncrypt.encryptedC1Y === receiverValueC1[1];
+    receiverValueEncrypt.encryptedC2X === receiverValueC2[0];
+    receiverValueEncrypt.encryptedC2Y === receiverValueC2[1];
 }
 
 template CheckPCT() {
@@ -238,15 +226,14 @@ template CheckPCT() {
     signal input random;
     signal input value;
 
-    signal baseOrder <== 2736030358979909402780800718157159386076813972158567259200215660948447373041;
-
-    assert(random < baseOrder - 1);
+    // Verify the random is less than the base order
+    assert(random < 2736030358979909402780800718157159386076813972158567259200215660948447373041 - 1);
 
     component checkAuthKey = BabyPbk();
     checkAuthKey.in <== random;
 
-    assert(checkAuthKey.Ax == authKey[0]);
-    assert(checkAuthKey.Ay == authKey[1]);
+    checkAuthKey.Ax === authKey[0];
+    checkAuthKey.Ay === authKey[1];
 
     component checkEncKey = BabyScalarMul();
     checkEncKey.scalar <== random;
@@ -260,7 +247,7 @@ template CheckPCT() {
     decryptedPCT.key[1] <== checkEncKey.Ay;
 
 
-    assert(decryptedPCT.decrypted[0] == value);
+    decryptedPCT.decrypted[0] === value;
 }
 
 template CheckNullifierHash() {
@@ -275,7 +262,7 @@ template CheckNullifierHash() {
     hash.inputs[3] <== auditorCiphertext[2];
     hash.inputs[4] <== auditorCiphertext[3];
 
-    assert(hash.out == nullifierHash);
+    hash.out === nullifierHash;
 }
 
 template CheckRegistrationHash() {
@@ -289,5 +276,5 @@ template CheckRegistrationHash() {
     hash.inputs[1] <== senderPrivateKey;
     hash.inputs[2] <== senderAddress;
 
-    assert(hash.out == registrationHash);
+    hash.out === registrationHash;
 }
