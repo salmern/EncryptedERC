@@ -6,13 +6,14 @@ import type { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/dist/src
 import { Base8, mulPointEscalar } from "@zk-kit/baby-jubjub";
 import { expect } from "chai";
 import { ethers, zkit } from "hardhat";
-import { formatPrivKeyForBabyJub } from "maci-crypto";
 import { poseidon } from "maci-crypto/build/ts/hashing";
 import type {
 	CalldataMintCircuitGroth16,
 	CalldataTransferCircuitGroth16,
+	CalldataWithdrawCircuitGroth16,
 	MintCircuit,
 	TransferCircuit,
+	WithdrawCircuit,
 } from "../generated-types/zkit";
 import { processPoseidonDecryption, processPoseidonEncryption } from "../src";
 import { decryptPoint, encryptMessage } from "../src/jub/jub";
@@ -338,7 +339,7 @@ export const decryptPCT = async (
  * @param userEncryptedBalance User encrypted balance from eERC contract
  * @param userBalance User plain balance
  * @param auditorPublicKey Auditor's public key
- * @returns proof, publicInputs - Proof and public inputs for the generated proof
+ * @returns proof - Proof and public inputs for the generated proof
  * @returns userBalancePCT - User's balance after the withdrawal encrypted with Poseidon encryption
  */
 export const withdraw = async (
@@ -347,7 +348,10 @@ export const withdraw = async (
 	userEncryptedBalance: bigint[],
 	userBalance: bigint,
 	auditorPublicKey: bigint[],
-) => {
+): Promise<{
+	proof: CalldataWithdrawCircuitGroth16;
+	userBalancePCT: bigint[];
+}> => {
 	const newBalance = userBalance - amount;
 	const userPublicKey = user.publicKey;
 
@@ -366,38 +370,29 @@ export const withdraw = async (
 		authKey: auditorAuthKey,
 	} = processPoseidonEncryption([amount], auditorPublicKey);
 
-	const publicInputs = [
-		...userPublicKey.map(String),
-		...userEncryptedBalance.map(String),
-		...auditorPublicKey.map(String),
-		...auditorCiphertext.map(String),
-		...auditorAuthKey.map(String),
-		auditorNonce.toString(),
-		amount.toString(),
-	];
-
-	const privateInputs = [
-		formatPrivKeyForBabyJub(user.privateKey).toString(),
-		userBalance.toString(),
-		auditorEncRandom.toString(),
-	];
-
 	const input = {
-		privateInputs,
-		publicInputs,
+		ValueToWithdraw: amount,
+		SenderPrivateKey: user.formattedPrivateKey,
+		SenderPublicKey: userPublicKey,
+		SenderBalance: userBalance,
+		SenderBalanceC1: userEncryptedBalance.slice(0, 2),
+		SenderBalanceC2: userEncryptedBalance.slice(2, 4),
+		AuditorPublicKey: auditorPublicKey,
+		AuditorPCT: auditorCiphertext,
+		AuditorPCTAuthKey: auditorAuthKey,
+		AuditorPCTNonce: auditorNonce,
+		AuditorPCTRandom: auditorEncRandom,
 	};
 
-	// generate proof
-	const proof = await generateGnarkProof("WITHDRAW", JSON.stringify(input));
+	const circuit = await zkit.getCircuit("WithdrawCircuit");
+	const withdrawCircuit = circuit as unknown as WithdrawCircuit;
+
+	const proof = await withdrawCircuit.generateProof(input);
+	const calldata = await withdrawCircuit.generateCalldata(proof);
 
 	return {
-		proof,
-		publicInputs,
-		userBalancePCT: [
-			...userCiphertext.map(String),
-			...userAuthKey.map(String),
-			userNonce.toString(),
-		],
+		proof: calldata,
+		userBalancePCT: [...userCiphertext, ...userAuthKey, userNonce],
 	};
 };
 

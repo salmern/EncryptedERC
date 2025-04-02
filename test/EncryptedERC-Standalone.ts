@@ -249,17 +249,6 @@ describe("EncryptedERC - Standalone", () => {
 					),
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidOperation");
 			});
-
-			it("should revert if user try to withdraw", async () => {
-				await expect(
-					encryptedERC.connect(users[0].signer).withdraw(
-						1n,
-						Array.from({ length: 8 }, () => 1n),
-						Array.from({ length: 16 }, () => 1n),
-						Array.from({ length: 7 }, () => 1n),
-					),
-				).to.be.revertedWithCustomError(encryptedERC, "InvalidOperation");
-			});
 		});
 
 		describe("Private Mint", () => {

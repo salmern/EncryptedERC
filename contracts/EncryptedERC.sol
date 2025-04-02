@@ -13,7 +13,7 @@ import {BabyJubJub} from "./libraries/BabyJubJub.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // types
-import {CreateEncryptedERCParams, Point, EGCT, EncryptedBalance, AmountPCT, MintProof, TransferProof} from "./types/Types.sol";
+import {CreateEncryptedERCParams, Point, EGCT, EncryptedBalance, AmountPCT, MintProof, TransferProof, WithdrawProof} from "./types/Types.sol";
 
 // errors
 import {UserNotRegistered, AuditorKeyNotSet, InvalidProof, InvalidOperation, TransferFailed, UnknownToken, InvalidChainId, InvalidNullifier} from "./errors/Errors.sol";
@@ -25,8 +25,6 @@ import {IWithdrawVerifier} from "./interfaces/verifiers/IWithdrawVerifier.sol";
 import {ITransferVerifier} from "./interfaces/verifiers/ITransferVerifier.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-
-import "hardhat/console.sol";
 
 //             /$$$$$$$$ /$$$$$$$   /$$$$$$
 //            | $$_____/| $$__  $$ /$$__  $$
@@ -192,13 +190,13 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         address user,
         MintProof calldata proof
     ) external onlyOwner {
-        uint256[24] memory input = proof.publicSignals;
+        uint256[24] memory publicInputs = proof.publicSignals;
 
         if (isConverter) {
             revert InvalidOperation();
         }
 
-        if (block.chainid != input[0]) {
+        if (block.chainid != publicInputs[0]) {
             revert InvalidChainId();
         }
 
@@ -213,7 +211,10 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         {
             // user public key should match
             uint256[2] memory userPublicKey = registrar.getUserPublicKey(user);
-            if (userPublicKey[0] != input[2] || userPublicKey[1] != input[3]) {
+            if (
+                userPublicKey[0] != publicInputs[2] ||
+                userPublicKey[1] != publicInputs[3]
+            ) {
                 revert InvalidProof();
             }
         }
@@ -221,15 +222,15 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         {
             // auditor public key should match
             if (
-                auditorPublicKey.x != input[15] ||
-                auditorPublicKey.y != input[16]
+                auditorPublicKey.x != publicInputs[15] ||
+                auditorPublicKey.y != publicInputs[16]
             ) {
                 revert InvalidProof();
             }
         }
 
         // check if the mint nullifier is unique
-        uint256 mintNullifier = input[1];
+        uint256 mintNullifier = publicInputs[1];
 
         if (mintNullifier >= BabyJubJub.Q) {
             revert InvalidNullifier();
@@ -250,7 +251,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
             revert InvalidProof();
         }
 
-        _privateMint(user, mintNullifier, input);
+        _privateMint(user, mintNullifier, publicInputs);
     }
 
     /**
@@ -263,7 +264,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         TransferProof memory proof,
         uint256[7] calldata balancePCT
     ) external {
-        uint256[32] memory input = proof.publicSignals;
+        uint256[32] memory publicInputs = proof.publicSignals;
 
         // if contract is a converter, then revert
         if (isConverter) {
@@ -285,10 +286,10 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
             uint256[2] memory burnPublicKey = [uint256(0), uint256(1)];
 
             if (
-                fromPublicKey[0] != input[0] ||
-                fromPublicKey[1] != input[1] ||
-                burnPublicKey[0] != input[10] ||
-                burnPublicKey[1] != input[11]
+                fromPublicKey[0] != publicInputs[0] ||
+                fromPublicKey[1] != publicInputs[1] ||
+                burnPublicKey[0] != publicInputs[10] ||
+                burnPublicKey[1] != publicInputs[11]
             ) {
                 revert InvalidProof();
             }
@@ -297,8 +298,8 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         {
             // auditor public keys should match
             if (
-                auditorPublicKey.x != input[23] ||
-                auditorPublicKey.y != input[24]
+                auditorPublicKey.x != publicInputs[23] ||
+                auditorPublicKey.y != publicInputs[24]
             ) {
                 revert InvalidProof();
             }
@@ -315,12 +316,12 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
             revert InvalidProof();
         }
 
-        _transfer(from, to, tokenId, input, balancePCT);
+        _transfer(from, to, tokenId, publicInputs, balancePCT);
 
         {
             uint256[7] memory auditorPCT;
             for (uint256 i = 0; i < 7; i++) {
-                auditorPCT[i] = input[25 + i];
+                auditorPCT[i] = publicInputs[25 + i];
             }
 
             emit PrivateBurn(from, auditorPCT, auditor);
@@ -339,7 +340,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         TransferProof memory proof,
         uint256[7] calldata balancePCT
     ) public {
-        uint256[32] memory input = proof.publicSignals;
+        uint256[32] memory publicInputs = proof.publicSignals;
         address from = msg.sender;
         // if contract is a converter, then revert
         if (!isAuditorKeySet()) {
@@ -362,10 +363,10 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
             uint256[2] memory toPublicKey = registrar.getUserPublicKey(to);
 
             if (
-                fromPublicKey[0] != input[0] ||
-                fromPublicKey[1] != input[1] ||
-                toPublicKey[0] != input[10] ||
-                toPublicKey[1] != input[11]
+                fromPublicKey[0] != publicInputs[0] ||
+                fromPublicKey[1] != publicInputs[1] ||
+                toPublicKey[0] != publicInputs[10] ||
+                toPublicKey[1] != publicInputs[11]
             ) {
                 revert InvalidProof();
             }
@@ -374,8 +375,8 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         {
             // auditor public keys should match
             if (
-                auditorPublicKey.x != input[23] ||
-                auditorPublicKey.y != input[24]
+                auditorPublicKey.x != publicInputs[23] ||
+                auditorPublicKey.y != publicInputs[24]
             ) {
                 revert InvalidProof();
             }
@@ -392,12 +393,12 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
             revert InvalidProof();
         }
 
-        _transfer(from, to, tokenId, input, balancePCT);
+        _transfer(from, to, tokenId, publicInputs, balancePCT);
 
         {
             uint256[7] memory auditorPCT;
             for (uint256 i = 0; i < 7; i++) {
-                auditorPCT[i] = input[25 + i];
+                auditorPCT[i] = publicInputs[25 + i];
             }
 
             emit PrivateTransfer(from, to, auditorPCT, auditor);
@@ -465,20 +466,19 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
 
     /**
      * @param tokenId Token ID
-     * @param proof Proof
-     * @param input Public inputs for the proof
+     * @param proof Withdraw Proof
      * @param balancePCT Balance PCT
      *
      * @dev Withdraws the encrypted amount to the ERC20 token
      */
     function withdraw(
         uint256 tokenId,
-        uint256[8] calldata proof,
-        uint256[16] calldata input,
+        WithdrawProof memory proof,
         uint256[7] memory balancePCT
     ) public {
         address from = msg.sender;
-        uint256 amount = input[15];
+        uint256[16] memory publicInputs = proof.publicSignals;
+        uint256 amount = publicInputs[0];
 
         // revert if contract is not a converter
         if (!isConverter) {
@@ -488,7 +488,10 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         {
             // public key should match
             uint256[2] memory publicKey = registrar.getUserPublicKey(from);
-            if (publicKey[0] != input[0] || publicKey[1] != input[1]) {
+            if (
+                publicKey[0] != publicInputs[1] ||
+                publicKey[1] != publicInputs[2]
+            ) {
                 revert InvalidProof();
             }
         }
@@ -496,7 +499,8 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         {
             // auditor public key should match
             if (
-                auditorPublicKey.x != input[6] || auditorPublicKey.y != input[7]
+                auditorPublicKey.x != publicInputs[7] ||
+                auditorPublicKey.y != publicInputs[8]
             ) {
                 revert InvalidProof();
             }
@@ -505,12 +509,22 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         // verify the proof
         // withdrawVerifier.verifyProof(proof, input);
 
-        _withdraw(from, amount, tokenId, input, balancePCT);
+        bool isVerified = withdrawVerifier.verifyProof(
+            proof.proofPoints.a,
+            proof.proofPoints.b,
+            proof.proofPoints.c,
+            proof.publicSignals
+        );
+        if (!isVerified) {
+            revert InvalidProof();
+        }
+
+        _withdraw(from, amount, tokenId, publicInputs, balancePCT);
 
         {
             uint256[7] memory auditorPCT;
             for (uint256 i = 0; i < 7; i++) {
-                auditorPCT[i] = input[8 + i];
+                auditorPCT[i] = publicInputs[9 + i];
             }
 
             emit Withdraw(from, amount, tokenId, auditorPCT, auditor);
@@ -556,14 +570,14 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
      * @param from Address of the sender
      * @param amount Amount to withdraw
      * @param tokenId Token ID
-     * @param input Public inputs for the proof
+     * @param publicInputs Public inputs for the proof
      * @param balancePCT Balance PCT
      */
     function _withdraw(
         address from,
         uint256 amount,
         uint256 tokenId,
-        uint256[16] calldata input,
+        uint256[16] memory publicInputs,
         uint256[7] memory balancePCT
     ) internal {
         address tokenAddress = tokenAddresses[tokenId];
@@ -573,8 +587,8 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
 
         {
             EGCT memory providedBalance = EGCT({
-                c1: Point({x: input[2], y: input[3]}),
-                c2: Point({x: input[4], y: input[5]})
+                c1: Point({x: publicInputs[3], y: publicInputs[4]}),
+                c2: Point({x: publicInputs[5], y: publicInputs[6]})
             });
 
             uint256 balanceHash = _hashEGCT(providedBalance);
@@ -589,7 +603,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
             }
 
             EGCT memory encryptedWithdrawnAmount = BabyJubJub.encrypt(
-                Point({x: input[0], y: input[1]}),
+                Point({x: publicInputs[1], y: publicInputs[2]}),
                 amount
             );
 

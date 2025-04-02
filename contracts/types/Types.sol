@@ -67,3 +67,8 @@ struct TransferProof {
     ProofPoints proofPoints;
     uint256[32] publicSignals;
 }
+
+struct WithdrawProof {
+    ProofPoints proofPoints;
+    uint256[16] publicSignals;
+}
