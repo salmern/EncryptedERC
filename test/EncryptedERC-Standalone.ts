@@ -1,30 +1,30 @@
-import type { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/dist/src/signer-with-address";
+import type { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/signers";
+import { Base8, mulPointEscalar } from "@zk-kit/baby-jubjub";
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers, zkit } from "hardhat";
+import type {
+	CalldataRegistrationCircuitGroth16,
+	RegistrationCircuit,
+} from "../generated-types/zkit";
+import { BN254_SCALAR_FIELD } from "../src/constants";
+import { decryptPoint } from "../src/jub/jub";
+import type { EncryptedERC } from "../typechain-types/contracts/EncryptedERC";
 import type { Registrar } from "../typechain-types/contracts/Registrar";
 import {
 	EncryptedERC__factory,
 	Registrar__factory,
 } from "../typechain-types/factories/contracts";
-
-import { Base8, mulPointEscalar } from "@zk-kit/baby-jubjub";
-import { formatPrivKeyForBabyJub } from "maci-crypto";
-import { BN254_SCALAR_FIELD } from "../src/constants";
-import { decryptPoint } from "../src/jub/jub";
-import type { EncryptedERC } from "../typechain-types/contracts/EncryptedERC";
-
-import { poseidon3 } from "poseidon-lite";
 import {
 	decryptPCT,
 	deployLibrary,
 	deployVerifiers,
-	generateGnarkProof,
 	getDecryptedBalance,
 	privateBurn,
 	privateMint,
 	privateTransfer,
 } from "./helpers";
 import { User } from "./user";
+
 const DECIMALS = 2;
 
 describe("EncryptedERC - Standalone", () => {
@@ -89,94 +89,71 @@ describe("EncryptedERC - Standalone", () => {
 		});
 
 		describe("Registration", () => {
-			let validParams: {
-				proof: string[];
-				publicInputs: string[];
-			};
+			let registrationCircuit: RegistrationCircuit;
+			let validProof: CalldataRegistrationCircuitGroth16;
+
+			before(async () => {
+				const circuit = await zkit.getCircuit("RegistrationCircuit");
+				registrationCircuit = circuit as unknown as RegistrationCircuit;
+			});
 
 			it("users should be able to register properly", async () => {
-				const network = await ethers.provider.getNetwork();
-				const chainId = network.chainId;
-				for (const user of users.slice(0, 5)) {
-					const privateInputs = [
-						formatPrivKeyForBabyJub(user.privateKey).toString(),
-					];
+				const chainId = await ethers.provider
+					.getNetwork()
+					.then((network) => network.chainId);
 
-					const fullAddress = BigInt(user.signer.address);
+				for (const user of users) {
+					const registrationHash = user.genRegistrationHash(chainId);
 
-					const publicInputs = [
-						...user.publicKey.map(String),
-						fullAddress.toString(),
-						chainId.toString(),
-					];
 					const input = {
-						privateInputs,
-						publicInputs,
+						SenderPrivateKey: user.formattedPrivateKey,
+						SenderPublicKey: user.publicKey,
+						SenderAddress: BigInt(user.signer.address),
+						ChainID: chainId,
+						RegistrationHash: registrationHash,
 					};
 
-					const registrationHash = poseidon3([
-						chainId,
-						formatPrivKeyForBabyJub(user.privateKey).toString(),
-						fullAddress,
-					]).toString();
+					const proof = await registrationCircuit.generateProof(input);
+					const calldata = await registrationCircuit.generateCalldata(proof);
 
-					input.publicInputs.push(registrationHash);
+					const tx = await registrar.connect(user.signer).register({
+						proofPoints_: calldata.proofPoints,
+						publicSignals: calldata.publicSignals,
+					});
+					await tx.wait();
 
-					const proof = await generateGnarkProof(
-						"REGISTER",
-						JSON.stringify(input),
+					expect(await registrar.isUserRegistered(user.signer.address)).to.be
+						.true;
+					// and the public key is set
+					const contractPublicKey = await registrar.getUserPublicKey(
+						user.signer.address,
 					);
+					expect(contractPublicKey).to.deep.equal(user.publicKey);
 
-					// const tx = await registrar
-					// 	.connect(user.signer)
-					// 	.register(
-					// 		proof.map(BigInt),
-					// 		publicInputs.map(BigInt) as [
-					// 			bigint,
-					// 			bigint,
-					// 			bigint,
-					// 			bigint,
-					// 			bigint,
-					// 		],
-					// 	);
-					// await tx.wait();
+					// and the registration hash is set
+					const contractRegistrationHash = await registrar.isRegistered(
+						input.RegistrationHash,
+					);
+					expect(contractRegistrationHash).to.be.true;
 
-					// // check if the user is registered
-					// expect(await registrar.isUserRegistered(user.signer.address)).to.be
-					// 	.true;
-
-					// // and the public key is set
-					// const contractPublicKey = await registrar.getUserPublicKey(
-					// 	user.signer.address,
-					// );
-					// expect(contractPublicKey).to.deep.equal(user.publicKey);
-
-					// validParams = { proof, publicInputs };
+					validProof = calldata;
 				}
 			});
 
-			// it("already registered user can not register again", async () => {
-			// 	const alreadyRegisteredUser = users[0];
+			it("already registered user can not register again", async () => {
+				const alreadyRegisteredUser = users[0];
 
-			// 	await expect(
-			// 		registrar
-			// 			.connect(alreadyRegisteredUser.signer)
-			// 			.register(
-			// 				validParams.proof.map(BigInt),
-			// 				validParams.publicInputs.map(BigInt) as [
-			// 					bigint,
-			// 					bigint,
-			// 					bigint,
-			// 					bigint,
-			// 					bigint,
-			// 				],
-			// 			),
-			// 	).to.be.revertedWithCustomError(registrar, "InvalidSender");
-			// });
+				await expect(
+					registrar.connect(alreadyRegisteredUser.signer).register({
+						proofPoints_: validProof.proofPoints,
+						publicSignals: validProof.publicSignals,
+					}),
+				).to.be.revertedWithCustomError(registrar, "InvalidSender");
+			});
 		});
 	});
 
-	describe.skip("EncryptedERC", () => {
+	describe("EncryptedERC", () => {
 		let auditorPublicKey: [bigint, bigint];
 		let userBalance = 0n;
 

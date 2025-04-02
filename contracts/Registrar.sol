@@ -40,7 +40,7 @@ contract Registrar {
     /// @dev Function registers the user public key and registration hash if the proof is valid
     function register(RegisterProof calldata proof) external {
         // extract public inputs
-        uint256[5] memory input = proof.publicSignals_;
+        uint256[5] memory input = proof.publicSignals;
 
         address account = address(uint160(input[2]));
 
@@ -112,11 +112,12 @@ contract Registrar {
     /// @dev Function checks that the proof is valid and verified successfully
     /// @dev if the proof is not valid, it reverts the transaction
     function _verifyProof(RegisterProof calldata proof_) internal view {
-        uint256[2] memory pointA_ = proof_.proofBase.pointA_;
-        uint256[2][2] memory pointB_ = proof_.proofBase.pointB_;
-        uint256[2] memory pointC_ = proof_.proofBase.pointC_;
-        uint256[5] memory input = proof_.publicSignals_;
+        uint256[2] memory pointA_ = proof_.proofPoints_.a;
+        uint256[2][2] memory pointB_ = proof_.proofPoints_.b;
+        uint256[2] memory pointC_ = proof_.proofPoints_.c;
+        uint256[5] memory input = proof_.publicSignals;
 
+        // Verify the proof
         bool verified_ = registrationVerifier.verifyProof(
             pointA_,
             pointB_,
