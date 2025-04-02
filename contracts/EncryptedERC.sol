@@ -13,7 +13,7 @@ import {BabyJubJub} from "./libraries/BabyJubJub.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // types
-import {CreateEncryptedERCParams, Point, EGCT, EncryptedBalance, AmountPCT, MintProof} from "./types/Types.sol";
+import {CreateEncryptedERCParams, Point, EGCT, EncryptedBalance, AmountPCT, MintProof, TransferProof} from "./types/Types.sol";
 
 // errors
 import {UserNotRegistered, AuditorKeyNotSet, InvalidProof, InvalidOperation, TransferFailed, UnknownToken, InvalidChainId, InvalidNullifier} from "./errors/Errors.sol";
@@ -254,16 +254,17 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
     }
 
     /**
-     * @param proof Proof
-     * @param input Public inputs for the proof
+     * @param proof Transfer proof
+     * @param balancePCT Balance PCT for the sender
      * @dev Private burn is transffering the encrypted amount to BURN_USER
      *      which is the identity point (0, 1)
      */
     function privateBurn(
-        uint256[8] calldata proof,
-        uint256[32] calldata input,
+        TransferProof memory proof,
         uint256[7] calldata balancePCT
     ) external {
+        uint256[32] memory input = proof.publicSignals;
+
         // if contract is a converter, then revert
         if (isConverter) {
             revert InvalidOperation();
@@ -303,7 +304,16 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
             }
         }
 
-        // transferVerifier.verifyProof(proof, input);
+        // verify proof
+        bool isVerified = transferVerifier.verifyProof(
+            proof.proofPoints.a,
+            proof.proofPoints.b,
+            proof.proofPoints.c,
+            proof.publicSignals
+        );
+        if (!isVerified) {
+            revert InvalidProof();
+        }
 
         _transfer(from, to, tokenId, input, balancePCT);
 
@@ -320,18 +330,18 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
     /**
      * @param to Address of the receiver
      * @param tokenId Token ID
-     * @param proof Proof
-     * @param input Public inputs for the proof
+     * @param proof Transfer Proof
      * @param balancePCT Balance PCT
      */
     function transfer(
         address to,
         uint256 tokenId,
-        uint256[8] calldata proof,
-        uint256[32] calldata input,
+        TransferProof memory proof,
         uint256[7] calldata balancePCT
     ) public {
+        uint256[32] memory input = proof.publicSignals;
         address from = msg.sender;
+        // if contract is a converter, then revert
         if (!isAuditorKeySet()) {
             revert AuditorKeyNotSet();
         }
@@ -371,7 +381,16 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
             }
         }
 
-        // transferVerifier.verifyProof(proof, input);
+        // verify proof
+        bool isVerified = transferVerifier.verifyProof(
+            proof.proofPoints.a,
+            proof.proofPoints.b,
+            proof.proofPoints.c,
+            proof.publicSignals
+        );
+        if (!isVerified) {
+            revert InvalidProof();
+        }
 
         _transfer(from, to, tokenId, input, balancePCT);
 
@@ -733,7 +752,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         address from,
         address to,
         uint256 tokenId,
-        uint256[32] calldata input,
+        uint256[32] memory input,
         uint256[7] calldata balancePCT
     ) internal {
         {

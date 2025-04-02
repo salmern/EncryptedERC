@@ -62,3 +62,8 @@ struct MintProof {
     ProofPoints proofPoints;
     uint256[24] publicSignals;
 }
+
+struct TransferProof {
+    ProofPoints proofPoints;
+    uint256[32] publicSignals;
+}

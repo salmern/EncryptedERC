@@ -8,9 +8,11 @@ import { expect } from "chai";
 import { ethers, zkit } from "hardhat";
 import { formatPrivKeyForBabyJub } from "maci-crypto";
 import { poseidon } from "maci-crypto/build/ts/hashing";
-import {
+import type {
 	CalldataMintCircuitGroth16,
+	CalldataTransferCircuitGroth16,
 	MintCircuit,
+	TransferCircuit,
 } from "../generated-types/zkit";
 import { processPoseidonDecryption, processPoseidonEncryption } from "../src";
 import { decryptPoint, encryptMessage } from "../src/jub/jub";
@@ -226,7 +228,10 @@ export const privateTransfer = async (
 	transferAmount: bigint,
 	senderEncryptedBalance: bigint[],
 	auditorPublicKey: bigint[],
-) => {
+): Promise<{
+	proof: CalldataTransferCircuitGroth16;
+	senderBalancePCT: bigint[];
+}> => {
 	const senderNewBalance = senderBalance - transferAmount;
 	// 1. encrypt the transfer amount with el-gamal for sender
 	const { cipher: encryptedAmountSender, random: encryptedAmountSenderRandom } =
@@ -261,47 +266,40 @@ export const privateTransfer = async (
 		authKey: senderAuthKey,
 	} = processPoseidonEncryption([senderNewBalance], sender.publicKey);
 
-	const publicInputs = [
-		...sender.publicKey.map(String),
-		...senderEncryptedBalance.map(String),
-		...encryptedAmountSender[0].map(String),
-		...encryptedAmountSender[1].map(String),
-		...receiverPublicKey.map(String),
-		...encryptedAmountReceiver[0].map(String),
-		...encryptedAmountReceiver[1].map(String),
-		...receiverCiphertext.map(String),
-		...receiverAuthKey.map(String),
-		receiverNonce.toString(),
-		...auditorPublicKey.map(String),
-		...auditorCiphertext.map(String),
-		...auditorAuthKey.map(String),
-		auditorNonce.toString(),
-	];
-
-	const privateInputs = [
-		formatPrivKeyForBabyJub(sender.privateKey).toString(),
-		senderBalance.toString(),
-		encryptedAmountReceiverRandom.toString(),
-		receiverEncRandom.toString(),
-		auditorEncRandom.toString(),
-		transferAmount.toString(),
-	];
+	const circuit = await zkit.getCircuit("TransferCircuit");
+	const transferCircuit = circuit as unknown as TransferCircuit;
 
 	const input = {
-		privateInputs,
-		publicInputs,
+		ValueToTransfer: transferAmount,
+		SenderPrivateKey: sender.formattedPrivateKey,
+		SenderPublicKey: sender.publicKey,
+		SenderBalance: senderBalance,
+		SenderBalanceC1: senderEncryptedBalance.slice(0, 2),
+		SenderBalanceC2: senderEncryptedBalance.slice(2, 4),
+		SenderVTTC1: encryptedAmountSender[0],
+		SenderVTTC2: encryptedAmountSender[1],
+		ReceiverPublicKey: receiverPublicKey,
+		ReceiverVTTC1: encryptedAmountReceiver[0],
+		ReceiverVTTC2: encryptedAmountReceiver[1],
+		ReceiverVTTRandom: encryptedAmountReceiverRandom,
+		ReceiverPCT: receiverCiphertext,
+		ReceiverPCTAuthKey: receiverAuthKey,
+		ReceiverPCTNonce: receiverNonce,
+		ReceiverPCTRandom: receiverEncRandom,
+
+		AuditorPublicKey: auditorPublicKey,
+		AuditorPCT: auditorCiphertext,
+		AuditorPCTAuthKey: auditorAuthKey,
+		AuditorPCTNonce: auditorNonce,
+		AuditorPCTRandom: auditorEncRandom,
 	};
 
-	const proof = await generateGnarkProof("TRANSFER", JSON.stringify(input));
+	const proof = await transferCircuit.generateProof(input);
+	const calldata = await transferCircuit.generateCalldata(proof);
 
 	return {
-		proof,
-		publicInputs,
-		senderBalancePCT: [
-			...senderCiphertext.map(String),
-			...senderAuthKey.map(String),
-			senderNonce.toString(),
-		],
+		proof: calldata,
+		senderBalancePCT: [...senderCiphertext, ...senderAuthKey, senderNonce],
 	};
 };
 
