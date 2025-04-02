@@ -1,4 +1,2 @@
 node_modules/
-contracts/x/
 contracts/verifiers/*
-contracts/circom-verifiers/*

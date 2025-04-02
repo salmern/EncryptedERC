@@ -4,7 +4,7 @@
 
 pragma solidity >=0.7.0 <0.9.0;
 
-contract WithdrawCircuitGroth16Verifier {
+contract RegistrationCircuitGroth16Verifier {
     // @dev scalar field size
     uint256 public constant SCALAR_FIELD_SIZE =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
@@ -34,86 +34,38 @@ contract WithdrawCircuitGroth16Verifier {
     uint256 public constant GAMMA_Y2 =
         8495653923123431417604973247489272438418190587263600148770280649306958101930;
     uint256 public constant DELTA_X1 =
-        11707274581858258333913067364946259730269119880905399905761218649367661295437;
+        19965374130300105588154453301535269123411602798269266665696095295081623262027;
     uint256 public constant DELTA_X2 =
-        13644498242420876478524860741183641964527889247282815172767293296687470528871;
+        17703192589171165652685863770966484494882267597256846223456808392758202158772;
     uint256 public constant DELTA_Y1 =
-        1069018784085656862553989969072777569730533145959418362127012872687240898653;
+        9747078505955528892815235997757679282073905437957218356415362142317700098147;
     uint256 public constant DELTA_Y2 =
-        14572774829902292550471756563783137644266167549522322371583472343233827802364;
+        8963963680395437899233590953306944771965732554784263171626075154312957137933;
 
     uint256 public constant IC0_X =
-        4665213559817028349710523218267299521826903118353988508184817239618636325942;
+        8293877489940579761696004902017025011400603161830901364377878279884604125260;
     uint256 public constant IC0_Y =
-        20160440454399386681202396427373162547499075255368663641504102203942709689998;
+        8953233569962701939172344045233247655015728201668103211592982824612122006862;
     uint256 public constant IC1_X =
-        18800513048145531992897545772877235370200610327936396976859257084783403745020;
+        499353899817829877931122439572919939236792517732459965219573420679255394152;
     uint256 public constant IC1_Y =
-        11767613122029441877228436370003035887714598618418814320140052656400632989011;
+        17583141828869705703038195097242833246555481607324358064181616402872732446921;
     uint256 public constant IC2_X =
-        16426745270904986206102726985484750435722480574615161099656671381642824102463;
+        16746643416858618475678770360569302234752204024526443025579522961157354888756;
     uint256 public constant IC2_Y =
-        10003267536843755772082132252009632412676347246349924726709492197508536999172;
+        10678297484017321225656204745072620878007116922045737413828648527395555007157;
     uint256 public constant IC3_X =
-        14338520143568091410259211618945322925984118024733831225845594060173910691242;
+        817463557105351565524865039212350479098611567360754099639784395756146746196;
     uint256 public constant IC3_Y =
-        6676711450856802026792655443595398901584933212807087470143622149468731931014;
+        3482737432189795584177509400404770725186729738544224634023699549745301286459;
     uint256 public constant IC4_X =
-        19888903722125757262301691538345168989088862119816609423599463900041947700681;
+        4181254002615410455930932982645567278992988122017388062635937784655326826433;
     uint256 public constant IC4_Y =
-        11337886805479601948507111614826488877348438569086193883535947186479002443472;
+        5863777801628250723581744311475218615815971617427997316896402000869098504418;
     uint256 public constant IC5_X =
-        9541276258252900520331786903810413801557983332025367527494769531140193926196;
+        1961901987863270384206302142874291323062193552570435442185447619137636654763;
     uint256 public constant IC5_Y =
-        17542955290834530660109083090572618802971978850706660002350995884091867957729;
-    uint256 public constant IC6_X =
-        4724519816195278400121118339924818869555936402057923301928132747082553965195;
-    uint256 public constant IC6_Y =
-        170506481491911293752826389145370339226009163653637444268833057762911532599;
-    uint256 public constant IC7_X =
-        18008727566091879077825448810971769569686301533156372468638328886627366610522;
-    uint256 public constant IC7_Y =
-        21363025922275509453182555115622445442789754303086218188302477089938726148013;
-    uint256 public constant IC8_X =
-        21147247553560732219552650011579698601641362043822499667407305845105858132595;
-    uint256 public constant IC8_Y =
-        5773407446158752077664135347119473224473376016772739498081627072642150699452;
-    uint256 public constant IC9_X =
-        14144220591796076892195845113944827176511196878969783547545761479991115822670;
-    uint256 public constant IC9_Y =
-        1054274195356386395422954139562938719301974058612295498579098713886292222792;
-    uint256 public constant IC10_X =
-        14549452973322052307628137813473199051643795338760808874399987648430237660206;
-    uint256 public constant IC10_Y =
-        5375245460106134806104265600255959528981102100189385014387885672814142694528;
-    uint256 public constant IC11_X =
-        7938188101118037242019985747827308497789409671723062601399494746578385381587;
-    uint256 public constant IC11_Y =
-        10616097414968518340256458516191192277622583583152662245089807408222071286098;
-    uint256 public constant IC12_X =
-        15651647455355887062102051249645644500376858443057443163908706076779415926236;
-    uint256 public constant IC12_Y =
-        12799264591441699974569741179482337802301580495825140084283233755964001314814;
-    uint256 public constant IC13_X =
-        6256510229109262447044935100659939613769592176786873409832820966237663460762;
-    uint256 public constant IC13_Y =
-        15386947229139240192908474035312270521053021699098038149846460158982956485833;
-    uint256 public constant IC14_X =
-        11621194590646627616973671495356205825117539348494455329189780592754872887760;
-    uint256 public constant IC14_Y =
-        722096907665752388119423424328399069890456027946619360401607803539304071562;
-    uint256 public constant IC15_X =
-        16027833124279849550184114269778490019843531218174705865966538207256428950049;
-    uint256 public constant IC15_Y =
-        15167835678288939686469263444092080892790276843940677771746428114122276159559;
-    uint256 public constant IC16_X =
-        21649579376922324655982126893769728759011978253478936625542072766932748233768;
-    uint256 public constant IC16_Y =
-        9583203912855724562388871020566842302120956064717699319625383783999463389100;
-    uint256 public constant IC17_X =
-        21502440658348011078341109501418781514084203345678340344048986096433250868721;
-    uint256 public constant IC17_Y =
-        6544624142324075991513857589958408861068187518565659196083251793150459422073;
+        7177312220494185496332956657950760503015371334900641728669465371071550567491;
     
     /// @dev memory pointer sizes
     uint16 public constant P_PUBLIC_SIGNALS_ACCUMULATOR_SIZE = 128;
@@ -123,7 +75,7 @@ contract WithdrawCircuitGroth16Verifier {
         uint256[2] memory pointA_,
         uint256[2][2] memory pointB_,
         uint256[2] memory pointC_,
-        uint256[17] memory publicSignals_
+        uint256[5] memory publicSignals_
     ) public view returns (bool verified_) {
         assembly {
             function checkField(signal_) -> res_ {
@@ -171,42 +123,6 @@ contract WithdrawCircuitGroth16Verifier {
                     leave
                 }
                 if iszero(g1MulAdd(pointer_, IC5_X, IC5_Y, mload(add(pubSignals_, 128)))) {
-                    leave
-                }
-                if iszero(g1MulAdd(pointer_, IC6_X, IC6_Y, mload(add(pubSignals_, 160)))) {
-                    leave
-                }
-                if iszero(g1MulAdd(pointer_, IC7_X, IC7_Y, mload(add(pubSignals_, 192)))) {
-                    leave
-                }
-                if iszero(g1MulAdd(pointer_, IC8_X, IC8_Y, mload(add(pubSignals_, 224)))) {
-                    leave
-                }
-                if iszero(g1MulAdd(pointer_, IC9_X, IC9_Y, mload(add(pubSignals_, 256)))) {
-                    leave
-                }
-                if iszero(g1MulAdd(pointer_, IC10_X, IC10_Y, mload(add(pubSignals_, 288)))) {
-                    leave
-                }
-                if iszero(g1MulAdd(pointer_, IC11_X, IC11_Y, mload(add(pubSignals_, 320)))) {
-                    leave
-                }
-                if iszero(g1MulAdd(pointer_, IC12_X, IC12_Y, mload(add(pubSignals_, 352)))) {
-                    leave
-                }
-                if iszero(g1MulAdd(pointer_, IC13_X, IC13_Y, mload(add(pubSignals_, 384)))) {
-                    leave
-                }
-                if iszero(g1MulAdd(pointer_, IC14_X, IC14_Y, mload(add(pubSignals_, 416)))) {
-                    leave
-                }
-                if iszero(g1MulAdd(pointer_, IC15_X, IC15_Y, mload(add(pubSignals_, 448)))) {
-                    leave
-                }
-                if iszero(g1MulAdd(pointer_, IC16_X, IC16_Y, mload(add(pubSignals_, 480)))) {
-                    leave
-                }
-                if iszero(g1MulAdd(pointer_, IC17_X, IC17_Y, mload(add(pubSignals_, 512)))) {
                     leave
                 }
                 
@@ -267,18 +183,6 @@ contract WithdrawCircuitGroth16Verifier {
             verified_ := and(verified_, checkField(mload(add(publicSignals_, 64))))
             verified_ := and(verified_, checkField(mload(add(publicSignals_, 96))))
             verified_ := and(verified_, checkField(mload(add(publicSignals_, 128))))
-            verified_ := and(verified_, checkField(mload(add(publicSignals_, 160))))
-            verified_ := and(verified_, checkField(mload(add(publicSignals_, 192))))
-            verified_ := and(verified_, checkField(mload(add(publicSignals_, 224))))
-            verified_ := and(verified_, checkField(mload(add(publicSignals_, 256))))
-            verified_ := and(verified_, checkField(mload(add(publicSignals_, 288))))
-            verified_ := and(verified_, checkField(mload(add(publicSignals_, 320))))
-            verified_ := and(verified_, checkField(mload(add(publicSignals_, 352))))
-            verified_ := and(verified_, checkField(mload(add(publicSignals_, 384))))
-            verified_ := and(verified_, checkField(mload(add(publicSignals_, 416))))
-            verified_ := and(verified_, checkField(mload(add(publicSignals_, 448))))
-            verified_ := and(verified_, checkField(mload(add(publicSignals_, 480))))
-            verified_ := and(verified_, checkField(mload(add(publicSignals_, 512))))
             
             /// @dev check pairings
             if not(iszero(verified_)) {

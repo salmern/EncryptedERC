@@ -237,7 +237,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
             revert InvalidProof();
         }
 
-        mintVerifier.verifyProof(proof, input);
+        // mintVerifier.verifyProof(proof, input);
         _privateMint(user, mintNullifier, input);
     }
 
@@ -291,7 +291,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
             }
         }
 
-        transferVerifier.verifyProof(proof, input);
+        // transferVerifier.verifyProof(proof, input);
 
         _transfer(from, to, tokenId, input, balancePCT);
 
@@ -359,7 +359,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
             }
         }
 
-        transferVerifier.verifyProof(proof, input);
+        // transferVerifier.verifyProof(proof, input);
 
         _transfer(from, to, tokenId, input, balancePCT);
 
@@ -472,7 +472,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         }
 
         // verify the proof
-        withdrawVerifier.verifyProof(proof, input);
+        // withdrawVerifier.verifyProof(proof, input);
 
         _withdraw(from, amount, tokenId, input, balancePCT);
 

@@ -45,3 +45,15 @@ struct EGCT {
     Point c1;
     Point c2;
 }
+
+/// @dev The proof base is used to verify the proof
+struct ProofBase {
+    uint256[2] pointA_;
+    uint256[2][2] pointB_;
+    uint256[2] pointC_;
+}
+
+struct RegisterProof {
+    ProofBase proofBase;
+    uint256[5] publicSignals_;
+}

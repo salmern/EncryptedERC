@@ -48,4 +48,4 @@ template WithdrawCircuit() {
     checkAuditorPCT.value <== ValueToWithdraw;
 }
 
-component main { public [ SenderPublicKey, SenderBalance, SenderBalanceC1, SenderBalanceC2, AuditorPublicKey, AuditorPCT, AuditorPCTAuthKey, AuditorPCTNonce, ValueToWithdraw ] } = WithdrawCircuit();
+component main { public [ SenderPublicKey, SenderBalanceC1, SenderBalanceC2, AuditorPublicKey, AuditorPCT, AuditorPCTAuthKey, AuditorPCTNonce, ValueToWithdraw ] } = WithdrawCircuit();

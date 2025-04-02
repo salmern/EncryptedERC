@@ -62,7 +62,7 @@ const config: HardhatUserConfig = {
 			ptauDownload: true,
 		},
 		verifiersSettings: {
-			verifiersDir: "contracts/circom-verifiers",
+			verifiersDir: "contracts/verifiers",
 			verifiersType: "sol",
 		},
 		typesDir: "generated-types/zkit",
