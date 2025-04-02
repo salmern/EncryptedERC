@@ -5,9 +5,13 @@ import util from "node:util";
 import type { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/dist/src/signer-with-address";
 import { Base8, mulPointEscalar } from "@zk-kit/baby-jubjub";
 import { expect } from "chai";
-import { ethers } from "hardhat";
+import { ethers, zkit } from "hardhat";
 import { formatPrivKeyForBabyJub } from "maci-crypto";
 import { poseidon } from "maci-crypto/build/ts/hashing";
+import {
+	CalldataMintCircuitGroth16,
+	MintCircuit,
+} from "../generated-types/zkit";
 import { processPoseidonDecryption, processPoseidonEncryption } from "../src";
 import { decryptPoint, encryptMessage } from "../src/jub/jub";
 import type { AmountPCTStructOutput } from "../typechain-types/contracts/EncryptedERC";
@@ -121,7 +125,7 @@ export const privateMint = async (
 	amount: bigint,
 	receiverPublicKey: bigint[],
 	auditorPublicKey: bigint[],
-) => {
+): Promise<CalldataMintCircuitGroth16> => {
 	// 0. get chain id
 	const network = await ethers.provider.getNetwork();
 	const chainId = network.chainId;
@@ -149,36 +153,32 @@ export const privateMint = async (
 	// 4. create nullifier hash for the auditor
 	const nullifierHash = poseidon([chainId, ...auditorCiphertext]);
 
-	const publicInputs = [
-		...receiverPublicKey.map(String),
-		...encryptedAmount[0].map(String),
-		...encryptedAmount[1].map(String),
-		...receiverCiphertext.map(String),
-		...receiverAuthKey.map(String),
-		receiverNonce.toString(),
-		...auditorPublicKey.map(String),
-		...auditorCiphertext.map(String),
-		...auditorAuthKey.map(String),
-		auditorNonce.toString(),
-		chainId.toString(),
-		nullifierHash.toString(),
-	];
-
-	const privateInputs = [
-		encryptedAmountRandom.toString(),
-		receiverEncRandom.toString(),
-		auditorEncRandom.toString(),
-		amount.toString(),
-	];
-
 	const input = {
-		privateInputs,
-		publicInputs,
+		ValueToMint: amount,
+		ChainID: chainId,
+		NullifierHash: nullifierHash,
+		ReceiverPublicKey: receiverPublicKey,
+		ReceiverVTTC1: encryptedAmount[0],
+		ReceiverVTTC2: encryptedAmount[1],
+		ReceiverVTTRandom: encryptedAmountRandom,
+		ReceiverPCT: receiverCiphertext,
+		ReceiverPCTAuthKey: receiverAuthKey,
+		ReceiverPCTNonce: receiverNonce,
+		ReceiverPCTRandom: receiverEncRandom,
+		AuditorPublicKey: auditorPublicKey,
+		AuditorPCT: auditorCiphertext,
+		AuditorPCTAuthKey: auditorAuthKey,
+		AuditorPCTNonce: auditorNonce,
+		AuditorPCTRandom: auditorEncRandom,
 	};
 
-	const proof = await generateGnarkProof("MINT", JSON.stringify(input));
+	const circuit = await zkit.getCircuit("MintCircuit");
+	const mintCircuit = circuit as unknown as MintCircuit;
 
-	return { proof, publicInputs };
+	const proof = await mintCircuit.generateProof(input);
+	const calldata = await mintCircuit.generateCalldata(proof);
+
+	return calldata;
 };
 
 /**

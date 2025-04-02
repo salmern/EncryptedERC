@@ -49,12 +49,12 @@ const config: HardhatUserConfig = {
 			skipFiles: [],
 			c: false,
 			json: false,
-			optimization: "O1",
+			optimization: "O2",
 		},
 		setupSettings: {
 			contributionSettings: {
 				provingSystem: "groth16",
-				contributions: 2, // ?
+				contributions: 0,
 			},
 			onlyFiles: [],
 			skipFiles: [],

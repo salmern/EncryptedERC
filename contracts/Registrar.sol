@@ -112,9 +112,9 @@ contract Registrar {
     /// @dev Function checks that the proof is valid and verified successfully
     /// @dev if the proof is not valid, it reverts the transaction
     function _verifyProof(RegisterProof calldata proof_) internal view {
-        uint256[2] memory pointA_ = proof_.proofPoints_.a;
-        uint256[2][2] memory pointB_ = proof_.proofPoints_.b;
-        uint256[2] memory pointC_ = proof_.proofPoints_.c;
+        uint256[2] memory pointA_ = proof_.proofPoints.a;
+        uint256[2][2] memory pointB_ = proof_.proofPoints.b;
+        uint256[2] memory pointC_ = proof_.proofPoints.c;
         uint256[5] memory input = proof_.publicSignals;
 
         // Verify the proof

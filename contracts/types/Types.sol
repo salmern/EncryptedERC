@@ -54,6 +54,11 @@ struct ProofPoints {
 }
 
 struct RegisterProof {
-    ProofPoints proofPoints_;
+    ProofPoints proofPoints;
     uint256[5] publicSignals;
+}
+
+struct MintProof {
+    ProofPoints proofPoints;
+    uint256[24] publicSignals;
 }

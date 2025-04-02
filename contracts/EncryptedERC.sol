@@ -13,7 +13,7 @@ import {BabyJubJub} from "./libraries/BabyJubJub.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // types
-import {CreateEncryptedERCParams, Point, EGCT, EncryptedBalance, AmountPCT} from "./types/Types.sol";
+import {CreateEncryptedERCParams, Point, EGCT, EncryptedBalance, AmountPCT, MintProof} from "./types/Types.sol";
 
 // errors
 import {UserNotRegistered, AuditorKeyNotSet, InvalidProof, InvalidOperation, TransferFailed, UnknownToken, InvalidChainId, InvalidNullifier} from "./errors/Errors.sol";
@@ -25,6 +25,8 @@ import {IWithdrawVerifier} from "./interfaces/verifiers/IWithdrawVerifier.sol";
 import {ITransferVerifier} from "./interfaces/verifiers/ITransferVerifier.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+
+import "hardhat/console.sol";
 
 //             /$$$$$$$$ /$$$$$$$   /$$$$$$
 //            | $$_____/| $$__  $$ /$$__  $$
@@ -184,19 +186,19 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
 
     /**
      * @param user Address of the user
-     * @param proof Proof
-     * @param input Public inputs for the proof
+     * @param proof Mint Proof
      */
     function privateMint(
         address user,
-        uint256[8] calldata proof,
-        uint256[24] calldata input
+        MintProof calldata proof
     ) external onlyOwner {
+        uint256[24] memory input = proof.publicSignals;
+
         if (isConverter) {
             revert InvalidOperation();
         }
 
-        if (block.chainid != input[22]) {
+        if (block.chainid != input[0]) {
             revert InvalidChainId();
         }
 
@@ -211,7 +213,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         {
             // user public key should match
             uint256[2] memory userPublicKey = registrar.getUserPublicKey(user);
-            if (userPublicKey[0] != input[0] || userPublicKey[1] != input[1]) {
+            if (userPublicKey[0] != input[2] || userPublicKey[1] != input[3]) {
                 revert InvalidProof();
             }
         }
@@ -219,15 +221,15 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         {
             // auditor public key should match
             if (
-                auditorPublicKey.x != input[13] ||
-                auditorPublicKey.y != input[14]
+                auditorPublicKey.x != input[15] ||
+                auditorPublicKey.y != input[16]
             ) {
                 revert InvalidProof();
             }
         }
 
         // check if the mint nullifier is unique
-        uint256 mintNullifier = input[23];
+        uint256 mintNullifier = input[1];
 
         if (mintNullifier >= BabyJubJub.Q) {
             revert InvalidNullifier();
@@ -237,7 +239,17 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
             revert InvalidProof();
         }
 
-        // mintVerifier.verifyProof(proof, input);
+        // verify the proof
+        bool isVerified = mintVerifier.verifyProof(
+            proof.proofPoints.a,
+            proof.proofPoints.b,
+            proof.proofPoints.c,
+            proof.publicSignals
+        );
+        if (!isVerified) {
+            revert InvalidProof();
+        }
+
         _privateMint(user, mintNullifier, input);
     }
 
@@ -686,11 +698,11 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
     function _privateMint(
         address user,
         uint256 mintNullifier,
-        uint256[24] calldata input
+        uint256[24] memory input
     ) internal {
         EGCT memory eGCT = EGCT({
-            c1: Point({x: input[2], y: input[3]}),
-            c2: Point({x: input[4], y: input[5]})
+            c1: Point({x: input[4], y: input[5]}),
+            c2: Point({x: input[6], y: input[7]})
         });
 
         // since private mint is only for the standalone ERC, tokenId is always 0
@@ -699,8 +711,8 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         uint256[7] memory amountPCT;
         uint256[7] memory auditorPCT;
         for (uint256 i = 0; i < 7; i++) {
-            amountPCT[i] = input[6 + i];
-            auditorPCT[i] = input[15 + i];
+            amountPCT[i] = input[8 + i];
+            auditorPCT[i] = input[17 + i];
         }
 
         _addToUserBalance(user, tokenId, eGCT, amountPCT);
