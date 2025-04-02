@@ -16,7 +16,7 @@
     You should have received a copy of the GNU General Public License
     along with circom. If not, see <https://www.gnu.org/licenses/>.
 */
-pragma circom 2.0.0;
+pragma circom 2.1.9;
 
 template MultiMux3(n) {
     signal input c[n][8];  // Constants
@@ -53,23 +53,4 @@ template MultiMux3(n) {
                      (  a10[i] +  a1[i] +  a0[i] +  a[i] );
 
     }
-}
-
-template Mux3() {
-    var i;
-    signal input c[8];  // Constants
-    signal input s[3];   // Selector
-    signal output out;
-
-    component mux = MultiMux3(1);
-
-    for (i=0; i<8; i++) {
-        mux.c[0][i] <== c[i];
-    }
-
-    for (i=0; i<3; i++) {
-      s[i] ==> mux.s[i];
-    }
-
-    mux.out[0] ==> out;
 }
