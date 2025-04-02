@@ -561,36 +561,37 @@ describe("EncryptedERC - Standalone", () => {
 		});
 
 		// In order to test front running protection what we can do is to
-		// 0. owner mints some tokens to userA
-		// 1. userA creates a burn proof but do not send it to the contract
-		// 2. owner mints some tokens to userA repeatedly so userA's amount PCTs are updated
-		// 3. userA sends his burn proof
+		// 0. owner mints some tokens to USER
+		// 1. USER creates a burn proof but do not send it to the contract
+		// 2. owner mints some tokens to USER. repeatedly so USER.'s amount PCTs are updated
+		// 3. USER. sends his burn proof
 		// after step 3, burn proof should be valid and need to updated pcts accordingly
-		describe.skip("Front Running Protection", () => {
+		describe("Front Running Protection", () => {
 			const INITIAL_MINT_COUNT = 4;
 			const SECOND_MINT_COUNT = 5;
 			const PER_MINT = 100n;
 			const EXPECTED_BALANCE_AFTER_INITIAL_MINT = 1000n;
 			const EXPECTED_BALANCE_AFTER_MINT = 2500n;
+			let USER: (typeof users)[number];
 
 			const burnAmount = 100n;
-			let userABalance = 0n;
+			let userBalance = 0n;
 
 			let burnProof: {
-				proof: string[];
-				publicInputs: string[];
-				senderBalancePCT: string[];
+				proof: TransferProofStruct;
+				senderBalancePCT: bigint[];
 			};
 
-			it("0. owner mints some tokens to userA", async () => {
-				console.log("UserA Initial Balance", userABalance);
+			it("0. owner mints some tokens to USER.", async () => {
+				console.log("USER. Initial Balance", userBalance);
 
-				const userA = users[1];
+				// user is the second user
+				USER = users[2];
 
 				for (let i = 0; i < INITIAL_MINT_COUNT; i++) {
-					const receiverPublicKey = userA.publicKey;
+					const receiverPublicKey = USER.publicKey;
 					const mintAmount = PER_MINT * BigInt(i + 1);
-					const { proof, publicInputs } = await privateMint(
+					const proof = await privateMint(
 						mintAmount,
 						receiverPublicKey,
 						auditorPublicKey,
@@ -598,19 +599,17 @@ describe("EncryptedERC - Standalone", () => {
 
 					await encryptedERC
 						.connect(owner)
-						.privateMint(userA.signer.address, proof, publicInputs);
+						.privateMint(USER.signer.address, proof);
 				}
 			});
 
-			it("userA balance should be updated properly", async () => {
-				const userA = users[1];
-
+			it("USER. balance should be updated properly", async () => {
 				const balance = await encryptedERC.balanceOfStandalone(
-					userA.signer.address,
+					USER.signer.address,
 				);
 
 				const totalBalance = await getDecryptedBalance(
-					userA.privateKey,
+					USER.privateKey,
 					balance.amountPCTs,
 					balance.balancePCT,
 					balance.eGCT,
@@ -620,16 +619,16 @@ describe("EncryptedERC - Standalone", () => {
 
 				const decryptedAmountPCTs = [];
 				for (const [pct] of amountPCTs) {
-					const decrypted = await decryptPCT(userA.privateKey, pct);
+					const decrypted = await decryptPCT(USER.privateKey, pct);
 					decryptedAmountPCTs.push(decrypted[0]);
 				}
 
 				expect(totalBalance).to.deep.equal(EXPECTED_BALANCE_AFTER_INITIAL_MINT);
-				userABalance = totalBalance;
+				userBalance = totalBalance;
 
 				console.log(
-					"UserA Balance After Initial Mint",
-					userABalance,
+					"USER. Balance After Initial Mint",
+					userBalance,
 					"has",
 					amountPCTs.length,
 					`amount pcts in contract before generating burn proof and has ${decryptedAmountPCTs.length} different amount pcts that have`,
@@ -637,32 +636,28 @@ describe("EncryptedERC - Standalone", () => {
 				);
 			});
 
-			it("1. userA creates a burn proof but do not send it to the contract", async () => {
-				const userA = users[1];
+			it("1. USER. creates a burn proof but do not send it to the contract", async () => {
 				const balance = await encryptedERC.balanceOfStandalone(
-					userA.signer.address,
+					USER.signer.address,
 				);
 
 				const userEncryptedBalance = [...balance.eGCT.c1, ...balance.eGCT.c2];
 
-				const { proof, publicInputs, senderBalancePCT } = await privateBurn(
-					userA,
-					userABalance,
+				const { proof, senderBalancePCT } = await privateBurn(
+					USER,
+					userBalance,
 					burnAmount,
 					userEncryptedBalance,
 					auditorPublicKey,
 				);
 
-				burnProof = { proof, publicInputs, senderBalancePCT };
+				burnProof = { proof, senderBalancePCT };
 			});
 
-			it("2. owner mints some tokens to userA repeatedly so userA's amount PCTs are updated", async () => {
-				const userA = users[1];
-
+			it("2. owner mints some tokens to USER. repeatedly so USER.'s amount PCTs are updated", async () => {
+				const receiverPublicKey = USER.publicKey;
 				for (let i = 0; i < SECOND_MINT_COUNT; i++) {
-					const receiverPublicKey = userA.publicKey;
-
-					const { proof, publicInputs } = await privateMint(
+					const proof = await privateMint(
 						PER_MINT * BigInt(i + 1),
 						receiverPublicKey,
 						auditorPublicKey,
@@ -670,19 +665,17 @@ describe("EncryptedERC - Standalone", () => {
 
 					await encryptedERC
 						.connect(owner)
-						.privateMint(userA.signer.address, proof, publicInputs);
+						.privateMint(USER.signer.address, proof);
 				}
 			});
 
-			it("userA balance should be updated properly", async () => {
-				const userA = users[1];
-
+			it("USER. balance should be updated properly", async () => {
 				const balance = await encryptedERC.balanceOfStandalone(
-					userA.signer.address,
+					USER.signer.address,
 				);
 
 				const totalBalance = await getDecryptedBalance(
-					userA.privateKey,
+					USER.privateKey,
 					balance.amountPCTs,
 					balance.balancePCT,
 					balance.eGCT,
@@ -692,16 +685,16 @@ describe("EncryptedERC - Standalone", () => {
 
 				const decryptedAmountPCTs = [];
 				for (const [pct] of amountPCTs) {
-					const decrypted = await decryptPCT(userA.privateKey, pct);
+					const decrypted = await decryptPCT(USER.privateKey, pct);
 					decryptedAmountPCTs.push(decrypted[0]);
 				}
 
 				expect(totalBalance).to.deep.equal(EXPECTED_BALANCE_AFTER_MINT);
-				userABalance = totalBalance;
+				userBalance = totalBalance;
 
 				console.log(
-					"UserA Balance After Second Mint",
-					userABalance,
+					"USER. Balance After Second Mint",
+					userBalance,
 					"has",
 					amountPCTs.length,
 					"amount pcts in contract and has",
@@ -709,56 +702,48 @@ describe("EncryptedERC - Standalone", () => {
 				);
 			});
 
-			it("3. userA sends his burn proof", async () => {
-				const userA = users[1];
-
+			it("3. USER. sends his burn proof", async () => {
 				await encryptedERC
-					.connect(userA.signer)
-					.privateBurn(
-						burnProof.proof,
-						burnProof.publicInputs,
-						burnProof.senderBalancePCT,
-					);
+					.connect(USER.signer)
+					.privateBurn(burnProof.proof, burnProof.senderBalancePCT);
 
-				console.log("userA balance before burn", userABalance);
-				userABalance = userABalance - burnAmount;
-				console.log("userA balance after burn", userABalance);
+				console.log("USER. balance before burn", userBalance);
+				userBalance = userBalance - burnAmount;
+				console.log("USER. balance after burn", userBalance);
 			});
 
 			it("after that amount pcts should be updated properly", async () => {
-				const userA = users[1];
-
 				const balance = await encryptedERC.balanceOfStandalone(
-					userA.signer.address,
+					USER.signer.address,
 				);
 
 				const totalBalance = await getDecryptedBalance(
-					userA.privateKey,
+					USER.privateKey,
 					balance.amountPCTs,
 					balance.balancePCT,
 					balance.eGCT,
 				);
 
 				const decryptedBalancePCT = await decryptPCT(
-					userA.privateKey,
+					USER.privateKey,
 					balance.balancePCT,
 				);
 
 				const amountPCTs = balance.amountPCTs;
 				const decryptedAmountPCTs = [];
 				for (const [pct] of amountPCTs) {
-					const decrypted = await decryptPCT(userA.privateKey, pct);
+					const decrypted = await decryptPCT(USER.privateKey, pct);
 					decryptedAmountPCTs.push(decrypted[0]);
 				}
 
 				console.log("decryptedAmountPCTs", decryptedAmountPCTs);
 
-				expect(totalBalance).to.deep.equal(userABalance);
-				userABalance = totalBalance;
+				expect(totalBalance).to.deep.equal(userBalance);
+				userBalance = totalBalance;
 
 				console.log(
-					"UserA Balance After Burn",
-					userABalance,
+					"USER. Balance After Burn",
+					userBalance,
 					"has",
 					amountPCTs.length,
 					"amount pcts in contract and has",
@@ -768,63 +753,60 @@ describe("EncryptedERC - Standalone", () => {
 				);
 			});
 
-			it("userA can burn again", async () => {
-				const userA = users[1];
+			it("USER. can burn again", async () => {
 				const balance = await encryptedERC.balanceOfStandalone(
-					userA.signer.address,
+					USER.signer.address,
 				);
 
 				const userEncryptedBalance = [...balance.eGCT.c1, ...balance.eGCT.c2];
 
-				const { proof, publicInputs, senderBalancePCT } = await privateBurn(
-					userA,
-					userABalance,
+				const { proof, senderBalancePCT } = await privateBurn(
+					USER,
+					userBalance,
 					burnAmount,
 					userEncryptedBalance,
 					auditorPublicKey,
 				);
 
 				await encryptedERC
-					.connect(userA.signer)
-					.privateBurn(proof, publicInputs, senderBalancePCT);
+					.connect(USER.signer)
+					.privateBurn(proof, senderBalancePCT);
 
-				console.log("userA balance before burn", userABalance);
-				userABalance = userABalance - burnAmount;
-				console.log("userA balance after burn", userABalance);
+				console.log("USER. balance before burn", userBalance);
+				userBalance = userBalance - burnAmount;
+				console.log("USER. balance after burn", userBalance);
 			});
 
 			it("after that amount pcts should be updated properly", async () => {
-				const userA = users[1];
-
 				const balance = await encryptedERC.balanceOfStandalone(
-					userA.signer.address,
+					USER.signer.address,
 				);
 
 				const totalBalance = await getDecryptedBalance(
-					userA.privateKey,
+					USER.privateKey,
 					balance.amountPCTs,
 					balance.balancePCT,
 					balance.eGCT,
 				);
 
 				const decryptedBalancePCT = await decryptPCT(
-					userA.privateKey,
+					USER.privateKey,
 					balance.balancePCT,
 				);
 
 				const amountPCTs = balance.amountPCTs;
 				const decryptedAmountPCTs = [];
 				for (const [pct] of amountPCTs) {
-					const decrypted = await decryptPCT(userA.privateKey, pct);
+					const decrypted = await decryptPCT(USER.privateKey, pct);
 					decryptedAmountPCTs.push(decrypted[0]);
 				}
 
-				expect(totalBalance).to.deep.equal(userABalance);
-				userABalance = totalBalance;
+				expect(totalBalance).to.deep.equal(userBalance);
+				userBalance = totalBalance;
 
 				console.log(
-					"UserA Balance After Burn",
-					userABalance,
+					"USER. Balance After Burn",
+					userBalance,
 					"has",
 					amountPCTs.length,
 					"amount pcts in contract and has",
@@ -834,63 +816,60 @@ describe("EncryptedERC - Standalone", () => {
 				);
 			});
 
-			it("userA can burn again", async () => {
-				const userA = users[1];
+			it("USER. can burn again", async () => {
 				const balance = await encryptedERC.balanceOfStandalone(
-					userA.signer.address,
+					USER.signer.address,
 				);
 
 				const userEncryptedBalance = [...balance.eGCT.c1, ...balance.eGCT.c2];
 
-				const { proof, publicInputs, senderBalancePCT } = await privateBurn(
-					userA,
-					userABalance,
+				const { proof, senderBalancePCT } = await privateBurn(
+					USER,
+					userBalance,
 					burnAmount,
 					userEncryptedBalance,
 					auditorPublicKey,
 				);
 
 				await encryptedERC
-					.connect(userA.signer)
-					.privateBurn(proof, publicInputs, senderBalancePCT);
+					.connect(USER.signer)
+					.privateBurn(proof, senderBalancePCT);
 
-				console.log("userA balance before burn", userABalance);
-				userABalance = userABalance - burnAmount;
-				console.log("userA balance after burn", userABalance);
+				console.log("USER. balance before burn", userBalance);
+				userBalance = userBalance - burnAmount;
+				console.log("USER. balance after burn", userBalance);
 			});
 
 			it("after that amount pcts should be updated properly", async () => {
-				const userA = users[1];
-
 				const balance = await encryptedERC.balanceOfStandalone(
-					userA.signer.address,
+					USER.signer.address,
 				);
 
 				const totalBalance = await getDecryptedBalance(
-					userA.privateKey,
+					USER.privateKey,
 					balance.amountPCTs,
 					balance.balancePCT,
 					balance.eGCT,
 				);
 
 				const decryptedBalancePCT = await decryptPCT(
-					userA.privateKey,
+					USER.privateKey,
 					balance.balancePCT,
 				);
 
 				const amountPCTs = balance.amountPCTs;
 				const decryptedAmountPCTs = [];
 				for (const [pct] of amountPCTs) {
-					const decrypted = await decryptPCT(userA.privateKey, pct);
+					const decrypted = await decryptPCT(USER.privateKey, pct);
 					decryptedAmountPCTs.push(decrypted[0]);
 				}
 
-				expect(totalBalance).to.deep.equal(userABalance);
-				userABalance = totalBalance;
+				expect(totalBalance).to.deep.equal(userBalance);
+				userBalance = totalBalance;
 
 				console.log(
-					"UserA Balance After Burn",
-					userABalance,
+					"USER. Balance After Burn",
+					userBalance,
 					"has",
 					amountPCTs.length,
 					"amount pcts in contract and has",
