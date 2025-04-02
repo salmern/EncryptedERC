@@ -5,20 +5,20 @@ import util from "node:util";
 import type { SignerWithAddress } from "@nomicfoundation/hardhat-ethers/dist/src/signer-with-address";
 import { Base8, mulPointEscalar } from "@zk-kit/baby-jubjub";
 import { expect } from "chai";
+import { ethers } from "hardhat";
 import { formatPrivKeyForBabyJub } from "maci-crypto";
+import { poseidon } from "maci-crypto/build/ts/hashing";
+import { processPoseidonDecryption, processPoseidonEncryption } from "../src";
 import { decryptPoint, encryptMessage } from "../src/jub/jub";
 import type { AmountPCTStructOutput } from "../typechain-types/contracts/EncryptedERC";
 import { BabyJubJub__factory } from "../typechain-types/factories/contracts/libraries";
 import {
-	MintVerifier__factory,
-	RegistrationVerifier__factory,
-	TransferVerifier__factory,
-	WithdrawVerifier__factory,
+	MintCircuitGroth16Verifier__factory,
+	RegistrationCircuitGroth16Verifier__factory,
+	TransferCircuitGroth16Verifier__factory,
+	WithdrawCircuitGroth16Verifier__factory,
 } from "../typechain-types/factories/contracts/verifiers";
 import type { User } from "./user";
-import { ethers } from "hardhat";
-import { poseidon } from "maci-crypto/build/ts/hashing";
-import { processPoseidonDecryption, processPoseidonEncryption } from "../src";
 
 const execAsync = util.promisify(exec);
 
@@ -31,19 +31,24 @@ const execAsync = util.promisify(exec);
  * @returns transferVerifier - Transfer verifier contract address
  */
 export const deployVerifiers = async (signer: SignerWithAddress) => {
-	const registrationVerifierFactory = new RegistrationVerifier__factory(signer);
+	const registrationVerifierFactory =
+		new RegistrationCircuitGroth16Verifier__factory(signer);
 	const registrationVerifier = await registrationVerifierFactory.deploy();
 	await registrationVerifier.waitForDeployment();
 
-	const mintVerifierFactory = new MintVerifier__factory(signer);
+	const mintVerifierFactory = new MintCircuitGroth16Verifier__factory(signer);
 	const mintVerifier = await mintVerifierFactory.deploy();
 	await mintVerifier.waitForDeployment();
 
-	const withdrawVerifierFactory = new WithdrawVerifier__factory(signer);
+	const withdrawVerifierFactory = new WithdrawCircuitGroth16Verifier__factory(
+		signer,
+	);
 	const withdrawVerifier = await withdrawVerifierFactory.deploy();
 	await withdrawVerifier.waitForDeployment();
 
-	const transferVerifierFactory = new TransferVerifier__factory(signer);
+	const transferVerifierFactory = new TransferCircuitGroth16Verifier__factory(
+		signer,
+	);
 	const transferVerifier = await transferVerifierFactory.deploy();
 	await transferVerifier.waitForDeployment();
 
