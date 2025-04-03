@@ -24,7 +24,15 @@ template WithdrawCircuit() {
     bitCheck1.in <== ValueToWithdraw;
 
     component bitCheck2 = Num2Bits(252);
-    bitCheck2.in <== SenderBalance;
+    bitCheck2.in <== baseOrder;
+
+    component checkWithdrawalAmount = LessThan(252);
+    checkWithdrawalAmount.in[0] <== ValueToWithdraw;
+    checkWithdrawalAmount.in[1] <== baseOrder;
+    checkWithdrawalAmount.out === 1;
+
+    component bitCheck3 = Num2Bits(252);
+    bitCheck3.in <== SenderBalance + 1;
 
     component checkValue = LessThan(252);
     checkValue.in[0] <== ValueToWithdraw;
