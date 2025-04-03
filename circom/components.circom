@@ -16,7 +16,17 @@ template PoseidonDecrypt(l) {
     signal output decrypted[decryptedLength];
 
     var two128 = 2 ** 128;
-    assert(nonce < two128);
+
+    component bitCheck1 = Num2Bits(252);
+    bitCheck1.in <== nonce;
+
+    component bitCheck2 = Num2Bits(252);
+    bitCheck2.in <== two128;
+
+    component lt = LessThan(252);
+    lt.in[0] <== nonce;
+    lt.in[1] <== two128;
+    lt.out === 1;
 
     var n = (decryptedLength + 1) \ 3;
 
@@ -155,7 +165,18 @@ template CheckPublicKey() {
     signal input pubKey[2];
     
     // Verify the private key is less than the base order
-    assert(privKey < 2736030358979909402780800718157159386076813972158567259200215660948447373041);
+    var baseOrder = 2736030358979909402780800718157159386076813972158567259200215660948447373041;
+
+    component bitCheck1 = Num2Bits(252);
+    bitCheck1.in <== privKey;
+
+    component bitCheck2 = Num2Bits(252);
+    bitCheck2.in <== baseOrder;
+
+    component lt = LessThan(252);
+    lt.in[0] <== privKey;
+    lt.in[1] <== baseOrder;
+    lt.out === 1;
 
     component checkPK = BabyPbk();
     checkPK.in <== privKey;
@@ -171,7 +192,18 @@ template CheckValue() {
     signal input valueC2[2];
 
     // Verify the value is less than the base order
-    assert(value < 2736030358979909402780800718157159386076813972158567259200215660948447373041);
+    var baseOrder = 2736030358979909402780800718157159386076813972158567259200215660948447373041;
+
+    component bitCheck1 = Num2Bits(252);
+    bitCheck1.in <== value;
+
+    component bitCheck2 = Num2Bits(252);
+    bitCheck2.in <== baseOrder;
+
+    component lt = LessThan(252);
+    lt.in[0] <== value;
+    lt.in[1] <== baseOrder;
+    lt.out === 1;
 
     component checkValue = ElGamalDecrypt();
     checkValue.c1[0] <== valueC1[0];
@@ -220,7 +252,18 @@ template CheckPCT() {
     signal input value;
 
     // Verify the random is less than the base order
-    assert(random < 2736030358979909402780800718157159386076813972158567259200215660948447373041);
+    var baseOrder = 2736030358979909402780800718157159386076813972158567259200215660948447373041;
+
+    component bitCheck1 = Num2Bits(252);
+    bitCheck1.in <== random;
+
+    component bitCheck2 = Num2Bits(252);
+    bitCheck2.in <== baseOrder;
+
+    component lt = LessThan(252);
+    lt.in[0] <== random;
+    lt.in[1] <== baseOrder;
+    lt.out === 1;
 
     component checkAuthKey = BabyPbk();
     checkAuthKey.in <== random;

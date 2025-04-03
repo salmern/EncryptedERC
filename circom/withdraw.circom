@@ -18,8 +18,18 @@ template WithdrawCircuit() {
     signal input AuditorPCTRandom;
 
 
-    // Verify the withdrawal amount is less than or equal to the sender's balance
-    assert(ValueToWithdraw <= SenderBalance);
+    // Verify the withdrawal amount is less than or equal to the sender's balance and is less than the base order
+    var baseOrder = 2736030358979909402780800718157159386076813972158567259200215660948447373041;
+    component bitCheck1 = Num2Bits(252);
+    bitCheck1.in <== ValueToWithdraw;
+
+    component bitCheck2 = Num2Bits(252);
+    bitCheck2.in <== SenderBalance;
+
+    component checkValue = LessThan(252);
+    checkValue.in[0] <== ValueToWithdraw;
+    checkValue.in[1] <== SenderBalance + 1;
+    checkValue.out === 1;
 
     // Verify that the sender's public key is well-formed
     component checkSenderPK = CheckPublicKey();

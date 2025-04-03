@@ -24,6 +24,18 @@ template MintCircuit () {
     signal input AuditorPCTNonce;
     signal input AuditorPCTRandom;
 
+    var baseOrder = 2736030358979909402780800718157159386076813972158567259200215660948447373041;
+    component bitCheck1 = Num2Bits(252);
+    bitCheck1.in <== ValueToMint;
+
+    component bitCheck2 = Num2Bits(252);
+    bitCheck2.in <== baseOrder;
+
+    component lt = LessThan(252);
+    lt.in[0] <== ValueToMint;
+    lt.in[1] <== baseOrder;
+    lt.out === 1;
+
     // Verify receiver's encrypted value is the mint amount
     component checkReceiverValue = CheckReceiverValue();
     checkReceiverValue.receiverValue <== ValueToMint;

@@ -30,8 +30,28 @@ template TransferCircuit () {
     signal input AuditorPCTNonce;
     signal input AuditorPCTRandom;
 
-    // Verify that the transfer amount is less than or equal to the sender's balance
-    assert(ValueToTransfer <= SenderBalance);
+    // Verify that the transfer amount is less than or equal to the sender's balance and is less than the base order
+    var baseOrder = 2736030358979909402780800718157159386076813972158567259200215660948447373041;   
+
+    component bitCheck1 = Num2Bits(252);
+    bitCheck1.in <== ValueToTransfer;
+
+    component bitCheck2 = Num2Bits(252);
+    bitCheck2.in <== baseOrder;
+
+    component lt = LessThan(252);
+    lt.in[0] <== ValueToTransfer;
+    lt.in[1] <== baseOrder;
+    lt.out === 1;
+
+    component bitCheck3 = Num2Bits(252);
+    bitCheck3.in <== SenderBalance + 1;
+
+    component checkValue = LessThan(252);
+    checkValue.in[0] <== ValueToTransfer;
+    checkValue.in[1] <== SenderBalance + 1;
+    checkValue.out === 1;
+
 
     // Verify that the sender's public key is well-formed
     component checkSenderPK = CheckPublicKey();
