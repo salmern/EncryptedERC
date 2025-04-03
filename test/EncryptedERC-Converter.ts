@@ -4,9 +4,7 @@ import { ethers, zkit } from "hardhat";
 import type { Registrar } from "../typechain-types/contracts/Registrar";
 import {
 	EncryptedERC__factory,
-	FeeERC20__factory,
 	Registrar__factory,
-	SimpleERC20__factory,
 } from "../typechain-types/factories/contracts";
 
 import type {
@@ -14,9 +12,13 @@ import type {
 	RegistrationCircuit,
 } from "../generated-types/zkit";
 import { processPoseidonEncryption } from "../src";
+import {
+	type FeeERC20,
+	FeeERC20__factory,
+	type SimpleERC20,
+	SimpleERC20__factory,
+} from "../typechain-types";
 import type { EncryptedERC } from "../typechain-types/contracts/EncryptedERC";
-import type { FeeERC20 } from "../typechain-types/contracts/FeeERC20";
-import type { SimpleERC20 } from "../typechain-types/contracts/SimpleERC20";
 import {
 	deployLibrary,
 	deployVerifiers,
@@ -620,7 +622,7 @@ describe("EncryptedERC - Converter", () => {
 					.connect(owner)
 					.setTokenBlacklist(blacklistedERC20.target, true);
 
-				const isBlacklisted = await encryptedERC.isTokenBlacklisted(
+				const isBlacklisted = await encryptedERC.blacklistedTokens(
 					blacklistedERC20.target,
 				);
 				expect(isBlacklisted).to.equal(true);
