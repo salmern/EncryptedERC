@@ -1,4 +1,4 @@
-pragma circom 2.2.2;
+pragma circom 2.1.9;
 
 include "./circomlib/poseidon.circom";
 include "./circomlib/babyjub.circom";
@@ -45,7 +45,7 @@ template PoseidonDecrypt(l) {
     // If length > 3, check if the last (3 - (l mod 3)) elements of the message
     // are 0
     if (l % 3 > 0) {
-        if (l % 3 == 2) {
+        if (l % 3 == 1) {
             decrypted[decryptedLength - 1] === 0;
         } else if (l % 3 == 2) {
             decrypted[decryptedLength - 1] === 0;
@@ -241,8 +241,6 @@ template CheckPCT() {
 
 
     decryptedPCT.decrypted[0] === value;
-    decryptedPCT.decrypted[1] === 0;
-    decryptedPCT.decrypted[2] === 0;
 }
 
 template CheckNullifierHash() {

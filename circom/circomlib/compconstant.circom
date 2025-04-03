@@ -16,12 +16,11 @@
     You should have received a copy of the GNU General Public License
     along with circom. If not, see <https://www.gnu.org/licenses/>.
 */
-pragma circom 2.0.0;
+pragma circom 2.1.9;
 
 include "bitify.circom";
 
 // Returns 1 if in (in binary) > ct
-
 template CompConstant(ct) {
     signal input in[254];
     signal output out;
