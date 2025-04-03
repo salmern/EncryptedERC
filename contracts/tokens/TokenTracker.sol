@@ -6,6 +6,7 @@
 pragma solidity 0.8.27;
 
 import {Ownable2Step, Ownable} from "@openzeppelin/contracts/access/Ownable2Step.sol";
+import {TokenBlacklisted, InvalidOperation} from "../errors/Errors.sol";
 
 contract TokenTracker is Ownable2Step {
     // starting from 1 because 0 is for standalone version of the EncryptedERC
@@ -26,7 +27,36 @@ contract TokenTracker is Ownable2Step {
     mapping(address tokenAddress => bool isBlacklisted)
         public blacklistedTokens;
 
-    error TokenBlacklisted(address token);
+    /**
+     * @dev Modifier to check if the contract is a converter
+     */
+    modifier onlyForConverter() {
+        if (!isConverter) {
+            revert InvalidOperation();
+        }
+        _;
+    }
+
+    /**
+     * @dev Modifier to check if the contract is a standalone
+     */
+    modifier onlyForStandalone() {
+        if (isConverter) {
+            revert InvalidOperation();
+        }
+        _;
+    }
+
+    /**
+     * @dev Modifier to check if the token is blacklisted
+     * @param tokenAddress Address of the token to check
+     */
+    modifier revertIfBlacklisted(address tokenAddress) {
+        if (blacklistedTokens[tokenAddress]) {
+            revert TokenBlacklisted(tokenAddress);
+        }
+        _;
+    }
 
     constructor(bool isConverter_) Ownable(msg.sender) {
         isConverter = isConverter_;
@@ -49,16 +79,6 @@ contract TokenTracker is Ownable2Step {
      */
     function getTokens() external view returns (address[] memory) {
         return tokens;
-    }
-
-    /**
-     * @param tokenAddress Address of the token to check
-     * @return bool True if token is blacklisted
-     */
-    function isTokenBlacklisted(
-        address tokenAddress
-    ) public view returns (bool) {
-        return blacklistedTokens[tokenAddress];
     }
 
     /**

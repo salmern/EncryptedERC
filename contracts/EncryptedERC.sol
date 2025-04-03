@@ -5,8 +5,9 @@
 pragma solidity 0.8.27;
 
 // contracts
-import {TokenTracker} from "./TokenTracker.sol";
+import {TokenTracker} from "./tokens/TokenTracker.sol";
 import {EncryptedUserBalances} from "./EncryptedUserBalances.sol";
+import {AuditorManager} from "./auditor/AuditorManager.sol";
 
 // libraries
 import {BabyJubJub} from "./libraries/BabyJubJub.sol";
@@ -29,48 +30,31 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 //             /$$$$$$$$ /$$$$$$$   /$$$$$$
 //            | $$_____/| $$__  $$ /$$__  $$
 //    /$$$$$$ | $$      | $$  \ $$| $$  \__/
-//   /$$__  $$| $$$$$   | $$$$$$$/| $$
-//  | $$$$$$$$| $$__/   | $$__  $$| $$
+//   /$$__  $$| $$$$$   | $$$$$$$/| $//  | $$$$$$$$| $$__/   | $$__  $$| $$
 //  | $$_____/| $$      | $$  \ $$| $$    $$
 //  |  $$$$$$$| $$$$$$$$| $$  | $$|  $$$$$$/
 //   \_______/|________/|__/  |__/ \______/
 //
-contract EncryptedERC is TokenTracker, EncryptedUserBalances {
-    // registrar contract
+contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
+    /// @dev Registrar contract
     IRegistrar public registrar;
 
-    // verifiers
+    /// @dev Verifiers
     IMintVerifier public mintVerifier;
     IWithdrawVerifier public withdrawVerifier;
     ITransferVerifier public transferVerifier;
 
-    // token name and symbol
+    /// @dev Token
     string public name;
     string public symbol;
-
-    // token decimals
     uint8 public decimals;
 
-    // auditor
-    Point public auditorPublicKey = Point({x: 0, y: 0});
-    address public auditor = address(0);
-
-    // nullifier hash for private mint
+    /// @dev Nullifier
     mapping(uint256 mintNullifier => bool isUsed) public alreadyMinted;
 
     ///////////////////////////////////////////////////
     ///                    Events                   ///
     ///////////////////////////////////////////////////
-
-    /**
-     * @param oldAuditor Address of the old auditor
-     * @param newAuditor Address of the new auditor
-     * @dev Emitted when the auditor public key is changed
-     */
-    event AuditorChanged(
-        address indexed oldAuditor,
-        address indexed newAuditor
-    );
 
     /**
      * @param user Address of the user
@@ -173,13 +157,8 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
             revert UserNotRegistered();
         }
 
-        address oldAuditor = auditor;
-        uint256[2] memory publicKey = registrar.getUserPublicKey(user);
-
-        auditor = user;
-        auditorPublicKey = Point({x: publicKey[0], y: publicKey[1]});
-
-        emit AuditorChanged(oldAuditor, user);
+        uint256[2] memory publicKey_ = registrar.getUserPublicKey(user);
+        _setAuditorPublicKey(user, publicKey_);
     }
 
     /**
@@ -189,19 +168,11 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
     function privateMint(
         address user,
         MintProof calldata proof
-    ) external onlyOwner {
+    ) external onlyOwner onlyIfAuditorSet onlyForStandalone {
         uint256[24] memory publicInputs = proof.publicSignals;
-
-        if (isConverter) {
-            revert InvalidOperation();
-        }
 
         if (block.chainid != publicInputs[0]) {
             revert InvalidChainId();
-        }
-
-        if (!isAuditorKeySet()) {
-            revert AuditorKeyNotSet();
         }
 
         if (!registrar.isUserRegistered(user)) {
@@ -263,13 +234,8 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
     function privateBurn(
         TransferProof memory proof,
         uint256[7] calldata balancePCT
-    ) external {
+    ) external onlyIfAuditorSet onlyForStandalone {
         uint256[32] memory publicInputs = proof.publicSignals;
-
-        // if contract is a converter, then revert
-        if (isConverter) {
-            revert InvalidOperation();
-        }
 
         address to = registrar.burnUser();
         address from = msg.sender;
@@ -339,13 +305,9 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         uint256 tokenId,
         TransferProof memory proof,
         uint256[7] calldata balancePCT
-    ) public {
+    ) public onlyIfAuditorSet {
         uint256[32] memory publicInputs = proof.publicSignals;
         address from = msg.sender;
-        // if contract is a converter, then revert
-        if (!isAuditorKeySet()) {
-            revert AuditorKeyNotSet();
-        }
 
         {
             // check if the from and to users are registered
@@ -416,21 +378,12 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         uint256 amount,
         address tokenAddress,
         uint256[7] memory amountPCT
-    ) public {
-        // revert if auditor key is not set
-        if (!isAuditorKeySet()) {
-            revert AuditorKeyNotSet();
-        }
-
-        // revert if contract is not a converter
-        if (!isConverter) {
-            revert InvalidOperation();
-        }
-
-        if (isTokenBlacklisted(tokenAddress)) {
-            revert TokenBlacklisted(tokenAddress);
-        }
-
+    )
+        public
+        onlyIfAuditorSet
+        onlyForConverter
+        revertIfBlacklisted(tokenAddress)
+    {
         IERC20 token = IERC20(tokenAddress);
         uint256 dust;
         uint256 tokenId;
@@ -475,15 +428,10 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         uint256 tokenId,
         WithdrawProof memory proof,
         uint256[7] memory balancePCT
-    ) public {
+    ) public onlyIfAuditorSet onlyForConverter {
         address from = msg.sender;
         uint256[16] memory publicInputs = proof.publicSignals;
         uint256 amount = publicInputs[0];
-
-        // revert if contract is not a converter
-        if (!isConverter) {
-            revert InvalidOperation();
-        }
 
         {
             // public key should match
@@ -507,8 +455,6 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
         }
 
         // verify the proof
-        // withdrawVerifier.verifyProof(proof, input);
-
         bool isVerified = withdrawVerifier.verifyProof(
             proof.proofPoints.a,
             proof.proofPoints.b,
@@ -529,13 +475,6 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances {
 
             emit Withdraw(from, amount, tokenId, auditorPCT, auditor);
         }
-    }
-
-    /**
-     * @return bool returns true if the auditor public key is set
-     */
-    function isAuditorKeySet() public view returns (bool) {
-        return auditorPublicKey.x != 0 && auditorPublicKey.y != 1;
     }
 
     /**

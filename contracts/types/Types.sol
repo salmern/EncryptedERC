@@ -11,8 +11,11 @@ struct Point {
 }
 
 struct CreateEncryptedERCParams {
+    // registrar contract address for fetcing users public key
     address registrar;
+    // eERC is converter mode or not
     bool isConverter;
+    // eERC Token
     string name;
     string symbol;
     uint8 decimals;
