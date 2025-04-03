@@ -7,9 +7,30 @@ pragma solidity 0.8.27;
 import {Point} from "../types/Types.sol";
 import {ZeroAddress} from "../errors/Errors.sol";
 
+/**
+ * @title AuditorManager
+ * @notice Abstract contract that manages auditor-related functionality for encrypted ERC operations
+ * @dev This contract is responsible for:
+ *      1. Storing and managing the auditor's address and public key
+ *      2. Providing access control for auditor-related operations
+ *      3. Emitting events when auditor information changes
+ *
+ * The auditor is a crucial component in the encrypted ERC system that:
+ * - Ensures compliance with regulatory requirements
+ * - Provides oversight for private operations
+ */
 abstract contract AuditorManager {
-    /// @dev Auditor
+    ///////////////////////////////////////////////////
+    ///                   State Variables           ///
+    ///////////////////////////////////////////////////
+
+    /// @notice The address of the current auditor
+    /// @dev This address is used to identify the auditor and for access control
     address public auditor = address(0);
+
+    /// @notice The public key of the current auditor
+    /// @dev This is used in zero-knowledge proofs to validate auditor signatures
+    ///      The point (0,1) is considered invalid as it's the identity point in the elliptic curve
     Point public auditorPublicKey = Point({x: 0, y: 0});
 
     ///////////////////////////////////////////////////
@@ -17,17 +38,28 @@ abstract contract AuditorManager {
     ///////////////////////////////////////////////////
 
     /**
-     * @param oldAuditor Address of the old auditor
-     * @param newAuditor Address of the new auditor
-     * @dev Emitted when the auditor public key is changed
+     * @notice Emitted when the auditor's information is updated
+     * @param oldAuditor The previous auditor's address
+     * @param newAuditor The new auditor's address
      */
     event AuditorChanged(
         address indexed oldAuditor,
         address indexed newAuditor
     );
 
+    ///////////////////////////////////////////////////
+    ///                   Modifiers                 ///
+    ///////////////////////////////////////////////////
+
     /**
-     * @dev Modifier to check if the auditor is set
+     * @notice Ensures that an auditor is properly
+     * @dev This modifier checks two conditions:
+     *      1. The auditor's public key is valid (not the identity point)
+     *      2. The auditor's address is not the zero address
+     *
+     * Requirements:
+     * - Auditor public key must be set (not the identity point)
+     * - Auditor address must be set (not zero address)
      */
     modifier onlyIfAuditorSet() {
         require(
@@ -39,24 +71,37 @@ abstract contract AuditorManager {
     }
 
     ///////////////////////////////////////////////////
-    ///                   Public                    ///
+    ///                   External                  ///
     ///////////////////////////////////////////////////
 
     /**
-     * @dev Returns true if the auditor public key is set
+     * @notice Checks if the auditor's public key is properly set
+     * @return bool True if the auditor's public key is set and valid
+     * @dev This function is used to verify if the contract is ready for
+     *      operations that require auditor validation
      */
     function isAuditorKeySet() external view returns (bool) {
         return auditorPublicKey.x != 0 && auditorPublicKey.y != 1;
     }
 
+    ///////////////////////////////////////////////////
+    ///                   Internal                  ///
+    ///////////////////////////////////////////////////
+
     /**
+     * @notice Updates the auditor's information
+     * @param newAuditor The address of the new auditor
+     * @param publicKey The public key of the new auditor
+     * @dev This function:
+     *      1. Validates the new auditor's address
+     *      2. Updates the auditor's information
+     *      3. Emits an event to track the change
      *
-     * @param newAuditor Address of the user
-     * @param publicKey Public key of the user
-     *
-     * @dev Sets the auditor's public key and address
+     * Requirements:
+     * - newAuditor must not be the zero address
+     * - publicKey must be a valid point on the elliptic curve
      */
-    function _setAuditorPublicKey(
+    function _updateAuditor(
         address newAuditor,
         uint256[2] memory publicKey
     ) internal {
