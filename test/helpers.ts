@@ -81,43 +81,6 @@ export const deployLibrary = async (signer: SignerWithAddress) => {
 };
 
 /**
- *
- * @param {PROOF_TYPE} type  Proof type
- * @param {object}     input Proof Input
- * @returns Proof
- * @dev This function generates a proof for the given input and proof type.
- * 	    It uses the binary in the outputs folder.
- */
-export const generateGnarkProof = async (
-	type: string,
-	input: string,
-): Promise<string[]> => {
-	const outputPath = path.join(__dirname, `${type}.output.json`);
-
-	const pkPath = path.join(__dirname, "../", "build", `${type}.pk`);
-	const csPath = path.join(__dirname, "../", "build", `${type}.r1cs`);
-
-	const executableName = "encryptedERC";
-	const executable = path.join(__dirname, "../", "zk", "build", executableName);
-
-	const cmd = `${executable} --operation ${type} --input '${input}' --pk ${pkPath} --cs ${csPath} --output ${outputPath}`;
-
-	// todo why stdout?
-	const now = Date.now();
-	console.log("Generating proof for ", type);
-	const { stderr: err } = await execAsync(cmd);
-	console.log("Proof generation took", Date.now() - now, "ms");
-	if (err) throw new Error(err);
-
-	const output = fs.readFileSync(outputPath, "utf-8");
-	const { proof } = JSON.parse(output);
-
-	fs.unlinkSync(outputPath);
-
-	return proof;
-};
-
-/**
  * Function for minting tokens privately to another user
  * @param amount Amount to be
  * @param receiverPublicKey Receiver's public key

@@ -17,7 +17,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {CreateEncryptedERCParams, Point, EGCT, EncryptedBalance, AmountPCT, MintProof, TransferProof, WithdrawProof} from "./types/Types.sol";
 
 // errors
-import {UserNotRegistered, AuditorKeyNotSet, InvalidProof, InvalidOperation, TransferFailed, UnknownToken, InvalidChainId, InvalidNullifier} from "./errors/Errors.sol";
+import {UserNotRegistered, InvalidProof, TransferFailed, UnknownToken, InvalidChainId, InvalidNullifier} from "./errors/Errors.sol";
 
 // interfaces
 import {IRegistrar} from "./interfaces/IRegistrar.sol";
