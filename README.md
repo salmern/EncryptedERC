@@ -254,18 +254,12 @@ npx  hardhat  coverage
 
 ### ⏱️ Circuit Benchmarks for Proof Generation
 
-Tested on M3 Pro CPU:
-| **Operation** | **Proving Time** |
-
+| **Operation**    | **Proving Time** |
 | ---------------- | ---------------- |
-
-| Registration | 71 ms |
-
-| Private Mint | 359 ms |
-
-| Private Burn | 360 ms |
-
-| Private Transfer | 606 ms |
+| Registration     | 458 ms           |
+| Private Mint     | 863 ms           |
+| Private Burn     | 360 ms           |
+| Private Transfer | 1120 ms          |
 
 ## Security Considerations
 
