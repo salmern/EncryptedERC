@@ -4,6 +4,8 @@ include "./circomlib/poseidon.circom";
 include "./circomlib/babyjub.circom";
 include "./circomlib/escalarmulany.circom";
 
+// Performs a Poseidon decryption of a given length
+// Taken from https://github.com/Shigoto-dev19/poseidon-encryption-circom2/blob/master-circom2/circom/poseidon.circom
 template PoseidonDecrypt(l) {
     var decryptedLength = l;
     while (decryptedLength % 3 != 0) {
@@ -65,6 +67,7 @@ template PoseidonDecrypt(l) {
 }
 
 // BabyJubJub Scalar Multiplication
+// Converted from https://github.com/iden3/circomlib/blob/master/circuits/babyjub.circom BabyPbk()
 template BabyScalarMul() {
     signal input  scalar;
     signal input point[2];
