@@ -269,6 +269,20 @@ template CheckReceiverValue() {
     component checkPoint2 = BabyCheck();
     checkPoint2.x <== receiverValueC2[0];
     checkPoint2.y <== receiverValueC2[1];
+
+    // Verify the receiver value is less than the base order
+    var baseOrder = 2736030358979909402780800718157159386076813972158567259200215660948447373041;
+
+    component bitCheck1 = Num2Bits(252);
+    bitCheck1.in <== receiverValue;
+
+    component bitCheck2 = Num2Bits(252);
+    bitCheck2.in <== baseOrder;
+
+    component lt = LessThan(252);
+    lt.in[0] <== receiverValue;
+    lt.in[1] <== baseOrder;
+    lt.out === 1;
     
     component receiverValueToPoint = BabyPbk();
     receiverValueToPoint.in <== receiverValue;
