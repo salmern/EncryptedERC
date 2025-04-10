@@ -14,7 +14,10 @@ import type {
 	MintProofStruct,
 	TransferProofStruct,
 } from "../typechain-types/contracts/EncryptedERC";
-import type { Registrar } from "../typechain-types/contracts/Registrar";
+import type {
+	RegisterProofStruct,
+	Registrar,
+} from "../typechain-types/contracts/Registrar";
 import {
 	EncryptedERC__factory,
 	Registrar__factory,
@@ -96,10 +99,60 @@ describe("EncryptedERC - Standalone", () => {
 		describe("Registration", () => {
 			let registrationCircuit: RegistrationCircuit;
 			let validProof: CalldataRegistrationCircuitGroth16;
+			const mockRegisterProof = {
+				proofPoints: {
+					a: ["0x0", "0x0"],
+					b: [
+						["0x0", "0x0"],
+						["0x0", "0x0"],
+					],
+					c: ["0x0", "0x0"],
+				},
+				publicSignals: Array.from({ length: 5 }, () => 1n), // index 3 is chain id
+			};
 
 			before(async () => {
 				const circuit = await zkit.getCircuit("RegistrationCircuit");
 				registrationCircuit = circuit as unknown as RegistrationCircuit;
+			});
+
+			it("should revert if chain id is not matching", async () => {
+				const sender = users[0];
+				const publicSignals = [...mockRegisterProof.publicSignals];
+
+				// index 2 is for account address
+				publicSignals[2] = BigInt(sender.signer.address);
+				// index 3 is for chain id
+				publicSignals[3] = 100n;
+
+				await expect(
+					registrar.connect(sender.signer).register({
+						proofPoints: mockRegisterProof.proofPoints,
+						publicSignals: publicSignals,
+					} as RegisterProofStruct),
+				).to.be.revertedWithCustomError(registrar, "InvalidChainId");
+			});
+
+			it("should revert if registration hash is not valid", async () => {
+				const sender = users[0];
+				const publicSignals = [...mockRegisterProof.publicSignals];
+				const chainId = await ethers.provider
+					.getNetwork()
+					.then((network) => network.chainId);
+
+				// index 2 is for account address
+				publicSignals[2] = BigInt(sender.signer.address);
+				// index 3 is for chain id
+				publicSignals[3] = chainId;
+				// index 4 is for registration hash
+				publicSignals[4] = BN254_SCALAR_FIELD + 1n;
+
+				await expect(
+					registrar.connect(sender.signer).register({
+						proofPoints: mockRegisterProof.proofPoints,
+						publicSignals: publicSignals,
+					} as RegisterProofStruct),
+				).to.be.revertedWithCustomError(registrar, "InvalidRegistrationHash");
 			});
 
 			it("users should be able to register properly", async () => {
@@ -148,14 +201,53 @@ describe("EncryptedERC - Standalone", () => {
 			});
 
 			it("already registered user can not register again", async () => {
-				const alreadyRegisteredUser = users[0];
+				const alreadyRegisteredUser = users[4];
 
 				await expect(
 					registrar.connect(alreadyRegisteredUser.signer).register({
 						proofPoints: validProof.proofPoints,
 						publicSignals: validProof.publicSignals,
 					}),
+				).to.be.revertedWithCustomError(registrar, "UserAlreadyRegistered");
+			});
+
+			it("should revert if sender is not matching", async () => {
+				// valid proof is for user[4] but we are using user[0]
+				const sender = users[0];
+
+				await expect(
+					registrar.connect(sender.signer).register({
+						proofPoints: validProof.proofPoints,
+						publicSignals: validProof.publicSignals,
+					} as RegisterProofStruct),
 				).to.be.revertedWithCustomError(registrar, "InvalidSender");
+			});
+
+			it("should revert if proof is not valid", async () => {
+				const user = new User(signers[5]);
+				const chainId = await ethers.provider
+					.getNetwork()
+					.then((network) => network.chainId);
+
+				const registrationHash = user.genRegistrationHash(chainId);
+
+				const input = {
+					SenderPrivateKey: user.formattedPrivateKey,
+					SenderPublicKey: user.publicKey,
+					SenderAddress: BigInt(user.signer.address),
+					ChainID: chainId,
+					RegistrationHash: registrationHash,
+				};
+
+				const proof = await registrationCircuit.generateProof(input);
+				const calldata = await registrationCircuit.generateCalldata(proof);
+
+				await expect(
+					registrar.connect(user.signer).register({
+						proofPoints: mockRegisterProof.proofPoints,
+						publicSignals: calldata.publicSignals,
+					} as RegisterProofStruct),
+				).to.be.revertedWithCustomError(registrar, "InvalidProof");
 			});
 		});
 	});
@@ -285,6 +377,14 @@ describe("EncryptedERC - Standalone", () => {
 				validProof = calldata;
 			});
 
+			it("should revert if user try to call private mint with the same proof (nullifier)", async () => {
+				await expect(
+					encryptedERC
+						.connect(users[0].signer)
+						.privateMint(users[0].signer.address, validProof),
+				).to.be.revertedWithCustomError(encryptedERC, "InvalidProof");
+			});
+
 			it("after private mint, balance should be updated properly", async () => {
 				const receiver = users[1];
 
@@ -383,7 +483,7 @@ describe("EncryptedERC - Standalone", () => {
 				).to.be.reverted;
 			});
 
-			it("auditor public key and auditor from proof should match, if not revert", async () => {
+			it("auditor public key with proof should match, if not revert", async () => {
 				const receiver = users[0];
 
 				const _publicInputs = [...validProof.publicSignals];
@@ -398,7 +498,7 @@ describe("EncryptedERC - Standalone", () => {
 						proofPoints: validProof.proofPoints,
 						publicSignals: _publicInputs,
 					}),
-				).to.be.reverted;
+				).to.be.revertedWithCustomError(encryptedERC, "InvalidProof");
 
 				// only change [16]
 				_publicInputs[15] = validProof.publicSignals[15];
@@ -409,7 +509,7 @@ describe("EncryptedERC - Standalone", () => {
 						proofPoints: validProof.proofPoints,
 						publicSignals: _publicInputs,
 					}),
-				).to.be.reverted;
+				).to.be.revertedWithCustomError(encryptedERC, "InvalidProof");
 			});
 		});
 
@@ -487,7 +587,7 @@ describe("EncryptedERC - Standalone", () => {
 				).to.be.reverted;
 			});
 
-			it("user public should match with proof, if not revert", async () => {
+			it("user public key should match with proof, if not revert", async () => {
 				const notUser0 = users[4];
 
 				await expect(
@@ -513,7 +613,7 @@ describe("EncryptedERC - Standalone", () => {
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidProof");
 			});
 
-			it("auditor public key and auditor from proof should match, if not revert", async () => {
+			it("auditor public key should match with proof, if not revert", async () => {
 				const user = users[0];
 
 				const _publicInputs = [...validProof.publicSignals];

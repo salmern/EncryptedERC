@@ -18,7 +18,11 @@ import {
 	type SimpleERC20,
 	SimpleERC20__factory,
 } from "../typechain-types";
-import type { EncryptedERC } from "../typechain-types/contracts/EncryptedERC";
+import type {
+	EncryptedERC,
+	MintProofStruct,
+	TransferProofStruct,
+} from "../typechain-types/contracts/EncryptedERC";
 import {
 	deployLibrary,
 	deployVerifiers,
@@ -172,6 +176,29 @@ describe("EncryptedERC - Converter", () => {
 
 	describe("EncryptedERC", () => {
 		let auditorPublicKey: [bigint, bigint];
+		const mockMintProof = {
+			proofPoints: {
+				a: ["0x0", "0x0"],
+				b: [
+					["0x0", "0x0"],
+					["0x0", "0x0"],
+				],
+				c: ["0x0", "0x0"],
+			},
+			publicSignals: Array.from({ length: 24 }, () => 1n),
+		};
+
+		const mockTransferProof = {
+			proofPoints: {
+				a: ["0x0", "0x0"],
+				b: [
+					["0x0", "0x0"],
+					["0x0", "0x0"],
+				],
+				c: ["0x0", "0x0"],
+			},
+			publicSignals: Array.from({ length: 32 }, () => 1n),
+		};
 
 		it("should initialize properly", async () => {
 			expect(encryptedERC.target).to.not.be.null;
@@ -186,6 +213,26 @@ describe("EncryptedERC - Converter", () => {
 		});
 
 		describe("Auditor Key Set", () => {
+			it("should revert if user try to call private burn without auditor key", async () => {
+				await expect(
+					encryptedERC.connect(users[0].signer).privateBurn(
+						mockTransferProof as TransferProofStruct,
+						Array.from({ length: 7 }, () => 1n),
+					),
+				).to.be.reverted;
+			});
+
+			it("should revert if user try to call private mint without auditor key", async () => {
+				await expect(
+					encryptedERC
+						.connect(users[0].signer)
+						.privateMint(
+							users[0].signer.address,
+							mockMintProof as MintProofStruct,
+						),
+				).to.be.reverted;
+			});
+
 			it("owner can set auditor key", async () => {
 				const tx = await encryptedERC
 					.connect(owner)
@@ -195,6 +242,27 @@ describe("EncryptedERC - Converter", () => {
 				expect(await encryptedERC.isAuditorKeySet()).to.be.true;
 
 				auditorPublicKey = await encryptedERC.auditorPublicKey();
+			});
+
+			// this both should be here since we need to set auditor key first
+			it("should revert if user try to call private burn in converter mode", async () => {
+				await expect(
+					encryptedERC.connect(users[0].signer).privateBurn(
+						mockTransferProof as TransferProofStruct,
+						Array.from({ length: 7 }, () => 1n),
+					),
+				).to.be.revertedWithCustomError(encryptedERC, "InvalidOperation");
+			});
+
+			it("should revert if user try to call private mint in converter mode", async () => {
+				await expect(
+					encryptedERC
+						.connect(users[0].signer)
+						.privateMint(
+							users[0].signer.address,
+							mockMintProof as MintProofStruct,
+						),
+				).to.be.revertedWithCustomError(encryptedERC, "InvalidOperation");
 			});
 		});
 
