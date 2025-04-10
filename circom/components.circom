@@ -74,6 +74,10 @@ template BabyScalarMul() {
     signal output Ax;
     signal output Ay;
 
+    component checkPoint = BabyCheck();
+    checkPoint.x <== point[0];
+    checkPoint.y <== point[1];
+
     component scalarBits = Num2Bits(253);
     scalarBits.in <== scalar;
 
@@ -100,6 +104,14 @@ template ElGamalEncrypt() {
     signal output encryptedC1Y;
     signal output encryptedC2X;
     signal output encryptedC2Y;
+
+    component checkPoint = BabyCheck();
+    checkPoint.x <== pk[0];
+    checkPoint.y <== pk[1];
+
+    component checkPoint2 = BabyCheck();
+    checkPoint2.x <== msg[0];
+    checkPoint2.y <== msg[1];
 
     component randomBits = Num2Bits(253);
     randomBits.in <== random;
@@ -136,6 +148,14 @@ template ElGamalDecrypt() {
     signal output outx;
     signal output outy;
 
+    component checkPoint = BabyCheck();
+    checkPoint.x <== c1[0];
+    checkPoint.y <== c1[1];
+
+    component checkPoint2 = BabyCheck();
+    checkPoint2.x <== c2[0];
+    checkPoint2.y <== c2[1];
+
     // Convert the private key to bits
     component privKeyBits = Num2Bits(253);
     privKeyBits.in <== privKey;
@@ -166,6 +186,10 @@ template ElGamalDecrypt() {
 template CheckPublicKey() {
     signal input privKey;
     signal input pubKey[2];
+
+    component checkPoint = BabyCheck();
+    checkPoint.x <== pubKey[0];
+    checkPoint.y <== pubKey[1];
     
     // Verify the private key is less than the base order
     var baseOrder = 2736030358979909402780800718157159386076813972158567259200215660948447373041;
@@ -194,6 +218,14 @@ template CheckValue() {
     signal input valueC1[2];
     signal input valueC2[2];
 
+    component checkPoint = BabyCheck();
+    checkPoint.x <== valueC1[0];
+    checkPoint.y <== valueC1[1];
+
+    component checkPoint2 = BabyCheck();
+    checkPoint2.x <== valueC2[0];
+    checkPoint2.y <== valueC2[1];
+    
     // Verify the value is less than the base order
     var baseOrder = 2736030358979909402780800718157159386076813972158567259200215660948447373041;
 
@@ -230,6 +262,28 @@ template CheckReceiverValue() {
     signal input receiverValueC1[2];
     signal input receiverValueC2[2];
 
+    component checkPoint = BabyCheck();
+    checkPoint.x <== receiverValueC1[0];
+    checkPoint.y <== receiverValueC1[1];
+
+    component checkPoint2 = BabyCheck();
+    checkPoint2.x <== receiverValueC2[0];
+    checkPoint2.y <== receiverValueC2[1];
+
+    // Verify the receiver value is less than the base order
+    var baseOrder = 2736030358979909402780800718157159386076813972158567259200215660948447373041;
+
+    component bitCheck1 = Num2Bits(252);
+    bitCheck1.in <== receiverValue;
+
+    component bitCheck2 = Num2Bits(252);
+    bitCheck2.in <== baseOrder;
+
+    component lt = LessThan(252);
+    lt.in[0] <== receiverValue;
+    lt.in[1] <== baseOrder;
+    lt.out === 1;
+    
     component receiverValueToPoint = BabyPbk();
     receiverValueToPoint.in <== receiverValue;
 
@@ -253,6 +307,14 @@ template CheckPCT() {
     signal input nonce;
     signal input random;
     signal input value;
+
+    component checkPoint = BabyCheck();
+    checkPoint.x <== publicKey[0];
+    checkPoint.y <== publicKey[1];
+
+    component checkPoint2 = BabyCheck();
+    checkPoint2.x <== authKey[0];
+    checkPoint2.y <== authKey[1];
 
     // Verify the random is less than the base order
     var baseOrder = 2736030358979909402780800718157159386076813972158567259200215660948447373041;
