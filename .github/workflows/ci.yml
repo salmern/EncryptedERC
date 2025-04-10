@@ -37,11 +37,7 @@ jobs:
 
       - name: Hardhat coverage
         run: |
-          touch eERC-tests.txt && \
-          npx hardhat coverage | tee eERC-tests.txt || true && \
-          echo '```' ? >> $GITHUB_STEP_SUMMARY && \
-          cat eERC-tests.txt >> $GITHUB_STEP_SUMMARY && \
-          echo '```' ? >> $GITHUB_STEP_SUMMARY
+          npx hardhat coverage
 
       - name: "Run linter"
         run: "npm run lint"
