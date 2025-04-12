@@ -17,7 +17,7 @@ AvaCloud API documentation can be found [here](https://docs.avacloud.io/encrypte
 
 - **Confidential Transactions**: User balances and transaction amounts remain completely hidden, ensuring financial privacy.
 
-- **Large Integers**: Efficiently handles token amounts up to 128 bits (2^128), accommodating substantial financial transactions.
+- **Large Integers**: Efficiently handles large token amounts up to 128 bits (2^128), accommodating substantial financial transactions.
 
 - **Client-Side Operations**: Users retain control, performing encryption, decryption, and zk-proof generation directly on their own devices.
 
@@ -28,8 +28,6 @@ AvaCloud API documentation can be found [here](https://docs.avacloud.io/encrypte
 - **Dual-Mode Operation**: Supports both standalone tokens and conversion of existing ERC-20 tokens.
 
 - **Zero-Knowledge Proofs**: Uses zk-SNARKs to validate transactions without revealing sensitive information.
-
-- **Homomorphic Encryption**: Leverages ElGamal encryption for private balance management.
 
 - **Chain Agnostic**: Can be deployed on any EVM-compatible blockchains.
 
@@ -257,9 +255,9 @@ Coverage report:
 npx hardhat coverage
 ```
 
-## 📊 Performance Overview
+## 📊 Efficiency Overview
 
-### ⛽ Avg. On-Chain Gas Costs (C-Chain Mainnet)
+### ⛽ Avg. On-Chain Gas Costs (Avalanche C-Chain Mainnet)
 
 ```sh
 ······················································································································································································
@@ -309,38 +307,28 @@ npx hardhat coverage
 ·································································································|·················|···············|·················|················|···············
 |  Key                                                                                                                                                                               │
 ······················································································································································································
-|  ◯  Execution gas for this method does not include intrinsic gas overhead                                                                                                          │
-······················································································································································································
-|  △  Cost was non-zero but below the precision setting for the currency display (see options)                                                                                       │
-······················································································································································································
-|  Toolchain:  hardhat                                                                                                                                                               │
+|  △  Cost was non-zero but below the precision setting for the currency display                                                                                                     │
 ······················································································································································································
 ```
 
 ## Security Audits
 
-1. **Circom Circuits Audit**
+1. **Circom Audit**
 
-   - Date: March 2024
-   - Scope: Zero-knowledge proof circuits implementation in circom
+   - Date: March 2025
+   - Scope: Circom circuits for various zero-knowledge proofs
    - Report: [avacloud-eerc-circom-audit.pdf](audit/avacloud-eerc-circom-audit.pdf)
 
-2. **Gnark Implementation Audit**
-   - Date: March 2024
-   - Scope: Core protocol implementation and gnark circuits implementations
+2. **Gnark Audit**
+   - Date: March 2025
+   - Scope: Core protocol and Gnark circuits for zero-knowledge proofs
    - Report: [avacloud-eerc-audit.pdf](audit/avacloud-eerc-audit.pdf)
 
 ## Security Considerations
 
-- **Auditor Integration**: The protocol includes built-in auditor functionality for regulatory compliance.
+- **Auditor Integration**: The protocol includes built-in auditor functionality for compliance.
 
-- **Nullifier System**: Prevents double-spending through a robust nullifier mechanism.
-
-- **Blacklisting**: Supports token blacklisting for security purposes.
-
-- **Input Validation**: Comprehensive validation of all inputs to prevent attacks.
-
-- **Access Control**: Proper access control mechanisms for sensitive operations.
+- **Blacklisting**: Supports optionalblacklisting for security purposes.
 
 ## License
 
