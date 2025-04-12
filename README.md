@@ -330,6 +330,21 @@ npx hardhat coverage
 
 - **Blacklisting**: Supports optionalblacklisting for security purposes.
 
+### Notes
+
+For production deployments, set `isProd` to `true` in the deployment scripts to use the production verifiers. These verifiers use secure trusted setups from the [zkevm](https://github.com/iden3/snarkjs?tab=readme-ov-file#7-prepare-phase-2).
+
+Corresponding `zkey` and `verification_key.json` files are present in the `circuits/build` directory. After compiling circuits present in the `circuits` folder, and downloading the proper `.ptau` files, these can be verified using the `snarkjs` tool with the following command:
+
+```sh
+snarkjs zkey verify <circuit_name>.r1cs powersOfTau28_hez_final_<Size>.ptau <circuit_name>.zkey
+```
+
+- For transfer/mint circuit => `powersOfTau28_hez_final_15.ptau`
+- For withdraw circuit => `powersOfTau28_hez_final_14.ptau`
+- For registration circuit => `powersOfTau28_hez_final_11.ptau`
+
+
 ## License
 
 This project is licensed under the Ecosystem License - see the LICENSE file for details.

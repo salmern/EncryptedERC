@@ -75,7 +75,7 @@ export const deployVerifiers = async (
       withdrawVerifier: withdrawVerifier.target.toString(),
       transferVerifier: transferVerifier.target.toString(),
     };
-  } else if (!isProd) {
+  } if (!isProd) {
     const registrationVerifierFactory =
       new RegistrationCircuitGroth16Verifier__factory(signer);
     const registrationVerifier = await registrationVerifierFactory.deploy();
@@ -103,9 +103,8 @@ export const deployVerifiers = async (
       withdrawVerifier: withdrawVerifier.target.toString(),
       transferVerifier: transferVerifier.target.toString(),
     };
-  } else {
-    throw new Error("Invalid deployment type");
   }
+  throw new Error("Invalid deployment type");
 };
 
 /**
