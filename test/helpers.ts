@@ -8,23 +8,31 @@ import { expect } from "chai";
 import { ethers, zkit } from "hardhat";
 import { poseidon } from "maci-crypto/build/ts/hashing";
 import type {
-	CalldataMintCircuitGroth16,
-	CalldataTransferCircuitGroth16,
-	CalldataWithdrawCircuitGroth16,
-	MintCircuit,
-	TransferCircuit,
-	WithdrawCircuit,
+  CalldataMintCircuitGroth16,
+  CalldataTransferCircuitGroth16,
+  CalldataWithdrawCircuitGroth16,
+  MintCircuit,
+  TransferCircuit,
+  WithdrawCircuit,
 } from "../generated-types/zkit";
 import { processPoseidonDecryption, processPoseidonEncryption } from "../src";
 import { decryptPoint, encryptMessage } from "../src/jub/jub";
 import type { AmountPCTStructOutput } from "../typechain-types/contracts/EncryptedERC";
 import { BabyJubJub__factory } from "../typechain-types/factories/contracts/libraries";
 import {
-	MintCircuitGroth16Verifier__factory,
-	RegistrationCircuitGroth16Verifier__factory,
-	TransferCircuitGroth16Verifier__factory,
-	WithdrawCircuitGroth16Verifier__factory,
+  MintCircuitGroth16Verifier__factory,
+  RegistrationCircuitGroth16Verifier__factory,
+  TransferCircuitGroth16Verifier__factory,
+  WithdrawCircuitGroth16Verifier__factory,
 } from "../typechain-types/factories/contracts/verifiers";
+
+import {
+  MintVerifier__factory,
+  RegistrationVerifier__factory,
+  TransferVerifier__factory,
+  WithdrawVerifier__factory,
+} from "../typechain-types/factories/contracts/prod";
+
 import type { User } from "./user";
 
 const execAsync = util.promisify(exec);
@@ -32,39 +40,72 @@ const execAsync = util.promisify(exec);
 /**
  * Function for deploying verifier contracts for eERC
  * @param signer Hardhat signer for the deployment
+ * @param isProd Boolean for prod or dev deployments
  * @returns registrationVerifier - Registration verifier contract address
  * @returns mintVerifier - Mint verifier contract address
  * @returns withdrawVerifier - Withdraw verifier contract address
  * @returns transferVerifier - Transfer verifier contract address
  */
-export const deployVerifiers = async (signer: SignerWithAddress) => {
-	const registrationVerifierFactory =
-		new RegistrationCircuitGroth16Verifier__factory(signer);
-	const registrationVerifier = await registrationVerifierFactory.deploy();
-	await registrationVerifier.waitForDeployment();
+export const deployVerifiers = async (
+  signer: SignerWithAddress,
+  isProd: boolean,
+) => {
+  if (isProd) {
+    const registrationVerifierFactory = new RegistrationVerifier__factory(
+      signer,
+    );
+    const registrationVerifier = await registrationVerifierFactory.deploy();
+    await registrationVerifier.waitForDeployment();
 
-	const mintVerifierFactory = new MintCircuitGroth16Verifier__factory(signer);
-	const mintVerifier = await mintVerifierFactory.deploy();
-	await mintVerifier.waitForDeployment();
+    const mintVerifierFactory = new MintVerifier__factory(signer);
+    const mintVerifier = await mintVerifierFactory.deploy();
+    await mintVerifier.waitForDeployment();
 
-	const withdrawVerifierFactory = new WithdrawCircuitGroth16Verifier__factory(
-		signer,
-	);
-	const withdrawVerifier = await withdrawVerifierFactory.deploy();
-	await withdrawVerifier.waitForDeployment();
+    const withdrawVerifierFactory = new WithdrawVerifier__factory(signer);
+    const withdrawVerifier = await withdrawVerifierFactory.deploy();
+    await withdrawVerifier.waitForDeployment();
 
-	const transferVerifierFactory = new TransferCircuitGroth16Verifier__factory(
-		signer,
-	);
-	const transferVerifier = await transferVerifierFactory.deploy();
-	await transferVerifier.waitForDeployment();
+    const transferVerifierFactory = new TransferVerifier__factory(signer);
+    const transferVerifier = await transferVerifierFactory.deploy();
+    await transferVerifier.waitForDeployment();
 
-	return {
-		registrationVerifier: registrationVerifier.target.toString(),
-		mintVerifier: mintVerifier.target.toString(),
-		withdrawVerifier: withdrawVerifier.target.toString(),
-		transferVerifier: transferVerifier.target.toString(),
-	};
+    return {
+      registrationVerifier: registrationVerifier.target.toString(),
+      mintVerifier: mintVerifier.target.toString(),
+      withdrawVerifier: withdrawVerifier.target.toString(),
+      transferVerifier: transferVerifier.target.toString(),
+    };
+  } else if (!isProd) {
+    const registrationVerifierFactory =
+      new RegistrationCircuitGroth16Verifier__factory(signer);
+    const registrationVerifier = await registrationVerifierFactory.deploy();
+    await registrationVerifier.waitForDeployment();
+
+    const mintVerifierFactory = new MintCircuitGroth16Verifier__factory(signer);
+    const mintVerifier = await mintVerifierFactory.deploy();
+    await mintVerifier.waitForDeployment();
+
+    const withdrawVerifierFactory = new WithdrawCircuitGroth16Verifier__factory(
+      signer,
+    );
+    const withdrawVerifier = await withdrawVerifierFactory.deploy();
+    await withdrawVerifier.waitForDeployment();
+
+    const transferVerifierFactory = new TransferCircuitGroth16Verifier__factory(
+      signer,
+    );
+    const transferVerifier = await transferVerifierFactory.deploy();
+    await transferVerifier.waitForDeployment();
+
+    return {
+      registrationVerifier: registrationVerifier.target.toString(),
+      mintVerifier: mintVerifier.target.toString(),
+      withdrawVerifier: withdrawVerifier.target.toString(),
+      transferVerifier: transferVerifier.target.toString(),
+    };
+  } else {
+    throw new Error("Invalid deployment type");
+  }
 };
 
 /**
@@ -73,11 +114,11 @@ export const deployVerifiers = async (signer: SignerWithAddress) => {
  * @returns Deployed BabyJubJub library address
  */
 export const deployLibrary = async (signer: SignerWithAddress) => {
-	const babyJubJubFactory = new BabyJubJub__factory(signer);
-	const babyJubJub = await babyJubJubFactory.deploy();
-	await babyJubJub.waitForDeployment();
+  const babyJubJubFactory = new BabyJubJub__factory(signer);
+  const babyJubJub = await babyJubJubFactory.deploy();
+  await babyJubJub.waitForDeployment();
 
-	return babyJubJub.target.toString();
+  return babyJubJub.target.toString();
 };
 
 /**
@@ -88,63 +129,63 @@ export const deployLibrary = async (signer: SignerWithAddress) => {
  * @returns {proof: string[], publicInputs: string[]} Proof and public inputs for the generated proof
  */
 export const privateMint = async (
-	amount: bigint,
-	receiverPublicKey: bigint[],
-	auditorPublicKey: bigint[],
+  amount: bigint,
+  receiverPublicKey: bigint[],
+  auditorPublicKey: bigint[],
 ): Promise<CalldataMintCircuitGroth16> => {
-	// 0. get chain id
-	const network = await ethers.provider.getNetwork();
-	const chainId = network.chainId;
+  // 0. get chain id
+  const network = await ethers.provider.getNetwork();
+  const chainId = network.chainId;
 
-	// 1. encrypt mint amount with el-gamal
-	const { cipher: encryptedAmount, random: encryptedAmountRandom } =
-		encryptMessage(receiverPublicKey, amount);
+  // 1. encrypt mint amount with el-gamal
+  const { cipher: encryptedAmount, random: encryptedAmountRandom } =
+    encryptMessage(receiverPublicKey, amount);
 
-	// 2. create pct for the receiver with the mint amount
-	const {
-		ciphertext: receiverCiphertext,
-		nonce: receiverNonce,
-		encRandom: receiverEncRandom,
-		authKey: receiverAuthKey,
-	} = processPoseidonEncryption([amount], receiverPublicKey);
+  // 2. create pct for the receiver with the mint amount
+  const {
+    ciphertext: receiverCiphertext,
+    nonce: receiverNonce,
+    encRandom: receiverEncRandom,
+    authKey: receiverAuthKey,
+  } = processPoseidonEncryption([amount], receiverPublicKey);
 
-	// 3. create pct for the auditor with the mint amount
-	const {
-		ciphertext: auditorCiphertext,
-		nonce: auditorNonce,
-		encRandom: auditorEncRandom,
-		authKey: auditorAuthKey,
-	} = processPoseidonEncryption([amount], auditorPublicKey);
+  // 3. create pct for the auditor with the mint amount
+  const {
+    ciphertext: auditorCiphertext,
+    nonce: auditorNonce,
+    encRandom: auditorEncRandom,
+    authKey: auditorAuthKey,
+  } = processPoseidonEncryption([amount], auditorPublicKey);
 
-	// 4. create nullifier hash for the auditor
-	const nullifierHash = poseidon([chainId, ...auditorCiphertext]);
+  // 4. create nullifier hash for the auditor
+  const nullifierHash = poseidon([chainId, ...auditorCiphertext]);
 
-	const input = {
-		ValueToMint: amount,
-		ChainID: chainId,
-		NullifierHash: nullifierHash,
-		ReceiverPublicKey: receiverPublicKey,
-		ReceiverVTTC1: encryptedAmount[0],
-		ReceiverVTTC2: encryptedAmount[1],
-		ReceiverVTTRandom: encryptedAmountRandom,
-		ReceiverPCT: receiverCiphertext,
-		ReceiverPCTAuthKey: receiverAuthKey,
-		ReceiverPCTNonce: receiverNonce,
-		ReceiverPCTRandom: receiverEncRandom,
-		AuditorPublicKey: auditorPublicKey,
-		AuditorPCT: auditorCiphertext,
-		AuditorPCTAuthKey: auditorAuthKey,
-		AuditorPCTNonce: auditorNonce,
-		AuditorPCTRandom: auditorEncRandom,
-	};
+  const input = {
+    ValueToMint: amount,
+    ChainID: chainId,
+    NullifierHash: nullifierHash,
+    ReceiverPublicKey: receiverPublicKey,
+    ReceiverVTTC1: encryptedAmount[0],
+    ReceiverVTTC2: encryptedAmount[1],
+    ReceiverVTTRandom: encryptedAmountRandom,
+    ReceiverPCT: receiverCiphertext,
+    ReceiverPCTAuthKey: receiverAuthKey,
+    ReceiverPCTNonce: receiverNonce,
+    ReceiverPCTRandom: receiverEncRandom,
+    AuditorPublicKey: auditorPublicKey,
+    AuditorPCT: auditorCiphertext,
+    AuditorPCTAuthKey: auditorAuthKey,
+    AuditorPCTNonce: auditorNonce,
+    AuditorPCTRandom: auditorEncRandom,
+  };
 
-	const circuit = await zkit.getCircuit("MintCircuit");
-	const mintCircuit = circuit as unknown as MintCircuit;
+  const circuit = await zkit.getCircuit("MintCircuit");
+  const mintCircuit = circuit as unknown as MintCircuit;
 
-	const proof = await mintCircuit.generateProof(input);
-	const calldata = await mintCircuit.generateCalldata(proof);
+  const proof = await mintCircuit.generateProof(input);
+  const calldata = await mintCircuit.generateCalldata(proof);
 
-	return calldata;
+  return calldata;
 };
 
 /**
@@ -158,20 +199,20 @@ export const privateMint = async (
  * @returns
  */
 export const privateBurn = async (
-	user: User,
-	userBalance: bigint,
-	amount: bigint,
-	userEncryptedBalance: bigint[],
-	auditorPublicKey: bigint[],
+  user: User,
+  userBalance: bigint,
+  amount: bigint,
+  userEncryptedBalance: bigint[],
+  auditorPublicKey: bigint[],
 ) => {
-	return privateTransfer(
-		user,
-		userBalance,
-		[0n, 1n],
-		amount,
-		userEncryptedBalance,
-		auditorPublicKey,
-	);
+  return privateTransfer(
+    user,
+    userBalance,
+    [0n, 1n],
+    amount,
+    userEncryptedBalance,
+    auditorPublicKey,
+  );
 };
 
 /**
@@ -186,85 +227,85 @@ export const privateBurn = async (
  * @returns senderBalancePCT - Sender's balance after the transfer encrypted with Poseidon encryption
  */
 export const privateTransfer = async (
-	sender: User,
-	senderBalance: bigint,
-	receiverPublicKey: bigint[],
-	transferAmount: bigint,
-	senderEncryptedBalance: bigint[],
-	auditorPublicKey: bigint[],
+  sender: User,
+  senderBalance: bigint,
+  receiverPublicKey: bigint[],
+  transferAmount: bigint,
+  senderEncryptedBalance: bigint[],
+  auditorPublicKey: bigint[],
 ): Promise<{
-	proof: CalldataTransferCircuitGroth16;
-	senderBalancePCT: bigint[];
+  proof: CalldataTransferCircuitGroth16;
+  senderBalancePCT: bigint[];
 }> => {
-	const senderNewBalance = senderBalance - transferAmount;
-	// 1. encrypt the transfer amount with el-gamal for sender
-	const { cipher: encryptedAmountSender, random: encryptedAmountSenderRandom } =
-		encryptMessage(sender.publicKey, transferAmount);
+  const senderNewBalance = senderBalance - transferAmount;
+  // 1. encrypt the transfer amount with el-gamal for sender
+  const { cipher: encryptedAmountSender, random: encryptedAmountSenderRandom } =
+    encryptMessage(sender.publicKey, transferAmount);
 
-	// 2. encrypt the transfer amount with el-gamal for receiver
-	const {
-		cipher: encryptedAmountReceiver,
-		random: encryptedAmountReceiverRandom,
-	} = encryptMessage(receiverPublicKey, transferAmount);
+  // 2. encrypt the transfer amount with el-gamal for receiver
+  const {
+    cipher: encryptedAmountReceiver,
+    random: encryptedAmountReceiverRandom,
+  } = encryptMessage(receiverPublicKey, transferAmount);
 
-	// 3. creates a pct for receiver with the transfer amount
-	const {
-		ciphertext: receiverCiphertext,
-		nonce: receiverNonce,
-		authKey: receiverAuthKey,
-		encRandom: receiverEncRandom,
-	} = processPoseidonEncryption([transferAmount], receiverPublicKey);
+  // 3. creates a pct for receiver with the transfer amount
+  const {
+    ciphertext: receiverCiphertext,
+    nonce: receiverNonce,
+    authKey: receiverAuthKey,
+    encRandom: receiverEncRandom,
+  } = processPoseidonEncryption([transferAmount], receiverPublicKey);
 
-	// 4. creates a pct for auditor with the transfer amount
-	const {
-		ciphertext: auditorCiphertext,
-		nonce: auditorNonce,
-		authKey: auditorAuthKey,
-		encRandom: auditorEncRandom,
-	} = processPoseidonEncryption([transferAmount], auditorPublicKey);
+  // 4. creates a pct for auditor with the transfer amount
+  const {
+    ciphertext: auditorCiphertext,
+    nonce: auditorNonce,
+    authKey: auditorAuthKey,
+    encRandom: auditorEncRandom,
+  } = processPoseidonEncryption([transferAmount], auditorPublicKey);
 
-	// 5. create pct for the sender with the newly calculated balance
-	const {
-		ciphertext: senderCiphertext,
-		nonce: senderNonce,
-		authKey: senderAuthKey,
-	} = processPoseidonEncryption([senderNewBalance], sender.publicKey);
+  // 5. create pct for the sender with the newly calculated balance
+  const {
+    ciphertext: senderCiphertext,
+    nonce: senderNonce,
+    authKey: senderAuthKey,
+  } = processPoseidonEncryption([senderNewBalance], sender.publicKey);
 
-	const circuit = await zkit.getCircuit("TransferCircuit");
-	const transferCircuit = circuit as unknown as TransferCircuit;
+  const circuit = await zkit.getCircuit("TransferCircuit");
+  const transferCircuit = circuit as unknown as TransferCircuit;
 
-	const input = {
-		ValueToTransfer: transferAmount,
-		SenderPrivateKey: sender.formattedPrivateKey,
-		SenderPublicKey: sender.publicKey,
-		SenderBalance: senderBalance,
-		SenderBalanceC1: senderEncryptedBalance.slice(0, 2),
-		SenderBalanceC2: senderEncryptedBalance.slice(2, 4),
-		SenderVTTC1: encryptedAmountSender[0],
-		SenderVTTC2: encryptedAmountSender[1],
-		ReceiverPublicKey: receiverPublicKey,
-		ReceiverVTTC1: encryptedAmountReceiver[0],
-		ReceiverVTTC2: encryptedAmountReceiver[1],
-		ReceiverVTTRandom: encryptedAmountReceiverRandom,
-		ReceiverPCT: receiverCiphertext,
-		ReceiverPCTAuthKey: receiverAuthKey,
-		ReceiverPCTNonce: receiverNonce,
-		ReceiverPCTRandom: receiverEncRandom,
+  const input = {
+    ValueToTransfer: transferAmount,
+    SenderPrivateKey: sender.formattedPrivateKey,
+    SenderPublicKey: sender.publicKey,
+    SenderBalance: senderBalance,
+    SenderBalanceC1: senderEncryptedBalance.slice(0, 2),
+    SenderBalanceC2: senderEncryptedBalance.slice(2, 4),
+    SenderVTTC1: encryptedAmountSender[0],
+    SenderVTTC2: encryptedAmountSender[1],
+    ReceiverPublicKey: receiverPublicKey,
+    ReceiverVTTC1: encryptedAmountReceiver[0],
+    ReceiverVTTC2: encryptedAmountReceiver[1],
+    ReceiverVTTRandom: encryptedAmountReceiverRandom,
+    ReceiverPCT: receiverCiphertext,
+    ReceiverPCTAuthKey: receiverAuthKey,
+    ReceiverPCTNonce: receiverNonce,
+    ReceiverPCTRandom: receiverEncRandom,
 
-		AuditorPublicKey: auditorPublicKey,
-		AuditorPCT: auditorCiphertext,
-		AuditorPCTAuthKey: auditorAuthKey,
-		AuditorPCTNonce: auditorNonce,
-		AuditorPCTRandom: auditorEncRandom,
-	};
+    AuditorPublicKey: auditorPublicKey,
+    AuditorPCT: auditorCiphertext,
+    AuditorPCTAuthKey: auditorAuthKey,
+    AuditorPCTNonce: auditorNonce,
+    AuditorPCTRandom: auditorEncRandom,
+  };
 
-	const proof = await transferCircuit.generateProof(input);
-	const calldata = await transferCircuit.generateCalldata(proof);
+  const proof = await transferCircuit.generateProof(input);
+  const calldata = await transferCircuit.generateCalldata(proof);
 
-	return {
-		proof: calldata,
-		senderBalancePCT: [...senderCiphertext, ...senderAuthKey, senderNonce],
-	};
+  return {
+    proof: calldata,
+    senderBalancePCT: [...senderCiphertext, ...senderAuthKey, senderNonce],
+  };
 };
 
 /**
@@ -275,24 +316,24 @@ export const privateTransfer = async (
  * @returns decrypted - Decrypted message as an array
  */
 export const decryptPCT = async (
-	privateKey: bigint,
-	pct: bigint[],
-	length = 1,
+  privateKey: bigint,
+  pct: bigint[],
+  length = 1,
 ) => {
-	// extract the ciphertext, authKey, and nonce from the pct
-	const ciphertext = pct.slice(0, 4);
-	const authKey = pct.slice(4, 6);
-	const nonce = pct[6];
+  // extract the ciphertext, authKey, and nonce from the pct
+  const ciphertext = pct.slice(0, 4);
+  const authKey = pct.slice(4, 6);
+  const nonce = pct[6];
 
-	const decrypted = processPoseidonDecryption(
-		ciphertext,
-		authKey,
-		nonce,
-		privateKey,
-		length,
-	);
+  const decrypted = processPoseidonDecryption(
+    ciphertext,
+    authKey,
+    nonce,
+    privateKey,
+    length,
+  );
 
-	return decrypted;
+  return decrypted;
 };
 
 /**
@@ -306,57 +347,57 @@ export const decryptPCT = async (
  * @returns userBalancePCT - User's balance after the withdrawal encrypted with Poseidon encryption
  */
 export const withdraw = async (
-	amount: bigint,
-	user: User,
-	userEncryptedBalance: bigint[],
-	userBalance: bigint,
-	auditorPublicKey: bigint[],
+  amount: bigint,
+  user: User,
+  userEncryptedBalance: bigint[],
+  userBalance: bigint,
+  auditorPublicKey: bigint[],
 ): Promise<{
-	proof: CalldataWithdrawCircuitGroth16;
-	userBalancePCT: bigint[];
+  proof: CalldataWithdrawCircuitGroth16;
+  userBalancePCT: bigint[];
 }> => {
-	const newBalance = userBalance - amount;
-	const userPublicKey = user.publicKey;
+  const newBalance = userBalance - amount;
+  const userPublicKey = user.publicKey;
 
-	// 1. create pct for the user with the newly calculated balance
-	const {
-		ciphertext: userCiphertext,
-		nonce: userNonce,
-		authKey: userAuthKey,
-	} = processPoseidonEncryption([newBalance], userPublicKey);
+  // 1. create pct for the user with the newly calculated balance
+  const {
+    ciphertext: userCiphertext,
+    nonce: userNonce,
+    authKey: userAuthKey,
+  } = processPoseidonEncryption([newBalance], userPublicKey);
 
-	// 2. create pct for the auditor with the withdrawal amount
-	const {
-		ciphertext: auditorCiphertext,
-		nonce: auditorNonce,
-		encRandom: auditorEncRandom,
-		authKey: auditorAuthKey,
-	} = processPoseidonEncryption([amount], auditorPublicKey);
+  // 2. create pct for the auditor with the withdrawal amount
+  const {
+    ciphertext: auditorCiphertext,
+    nonce: auditorNonce,
+    encRandom: auditorEncRandom,
+    authKey: auditorAuthKey,
+  } = processPoseidonEncryption([amount], auditorPublicKey);
 
-	const input = {
-		ValueToWithdraw: amount,
-		SenderPrivateKey: user.formattedPrivateKey,
-		SenderPublicKey: userPublicKey,
-		SenderBalance: userBalance,
-		SenderBalanceC1: userEncryptedBalance.slice(0, 2),
-		SenderBalanceC2: userEncryptedBalance.slice(2, 4),
-		AuditorPublicKey: auditorPublicKey,
-		AuditorPCT: auditorCiphertext,
-		AuditorPCTAuthKey: auditorAuthKey,
-		AuditorPCTNonce: auditorNonce,
-		AuditorPCTRandom: auditorEncRandom,
-	};
+  const input = {
+    ValueToWithdraw: amount,
+    SenderPrivateKey: user.formattedPrivateKey,
+    SenderPublicKey: userPublicKey,
+    SenderBalance: userBalance,
+    SenderBalanceC1: userEncryptedBalance.slice(0, 2),
+    SenderBalanceC2: userEncryptedBalance.slice(2, 4),
+    AuditorPublicKey: auditorPublicKey,
+    AuditorPCT: auditorCiphertext,
+    AuditorPCTAuthKey: auditorAuthKey,
+    AuditorPCTNonce: auditorNonce,
+    AuditorPCTRandom: auditorEncRandom,
+  };
 
-	const circuit = await zkit.getCircuit("WithdrawCircuit");
-	const withdrawCircuit = circuit as unknown as WithdrawCircuit;
+  const circuit = await zkit.getCircuit("WithdrawCircuit");
+  const withdrawCircuit = circuit as unknown as WithdrawCircuit;
 
-	const proof = await withdrawCircuit.generateProof(input);
-	const calldata = await withdrawCircuit.generateCalldata(proof);
+  const proof = await withdrawCircuit.generateProof(input);
+  const calldata = await withdrawCircuit.generateCalldata(proof);
 
-	return {
-		proof: calldata,
-		userBalancePCT: [...userCiphertext, ...userAuthKey, userNonce],
-	};
+  return {
+    proof: calldata,
+    userBalancePCT: [...userCiphertext, ...userAuthKey, userNonce],
+  };
 };
 
 /**
@@ -369,39 +410,39 @@ export const withdraw = async (
  * @returns totalBalance - balance of the user
  */
 export const getDecryptedBalance = async (
-	privateKey: bigint,
-	amountPCTs: AmountPCTStructOutput[],
-	balancePCT: bigint[],
-	encryptedBalance: bigint[][],
+  privateKey: bigint,
+  amountPCTs: AmountPCTStructOutput[],
+  balancePCT: bigint[],
+  encryptedBalance: bigint[][],
 ) => {
-	let totalBalance = 0n;
+  let totalBalance = 0n;
 
-	// decrypt the balance PCT
-	if (balancePCT.some((e) => e !== 0n)) {
-		const decryptedBalancePCT = await decryptPCT(privateKey, balancePCT);
-		totalBalance += BigInt(decryptedBalancePCT[0]);
-	}
+  // decrypt the balance PCT
+  if (balancePCT.some((e) => e !== 0n)) {
+    const decryptedBalancePCT = await decryptPCT(privateKey, balancePCT);
+    totalBalance += BigInt(decryptedBalancePCT[0]);
+  }
 
-	// decrypt all the amount PCTs and add them to the total balance
-	for (const [pct] of amountPCTs) {
-		if (pct.some((e) => e !== 0n)) {
-			const decryptedAmountPCT = await decryptPCT(privateKey, pct);
-			totalBalance += BigInt(decryptedAmountPCT[0]);
-		}
-	}
+  // decrypt all the amount PCTs and add them to the total balance
+  for (const [pct] of amountPCTs) {
+    if (pct.some((e) => e !== 0n)) {
+      const decryptedAmountPCT = await decryptPCT(privateKey, pct);
+      totalBalance += BigInt(decryptedAmountPCT[0]);
+    }
+  }
 
-	// decrypt the balance from the eERC contract
-	const decryptedBalance = decryptPoint(
-		privateKey,
-		encryptedBalance[0],
-		encryptedBalance[1],
-	);
+  // decrypt the balance from the eERC contract
+  const decryptedBalance = decryptPoint(
+    privateKey,
+    encryptedBalance[0],
+    encryptedBalance[1],
+  );
 
-	// compare the decrypted balance with the calculated balance
-	if (totalBalance !== 0n) {
-		const expectedPoint = mulPointEscalar(Base8, totalBalance);
-		expect(decryptedBalance).to.deep.equal(expectedPoint);
-	}
+  // compare the decrypted balance with the calculated balance
+  if (totalBalance !== 0n) {
+    const expectedPoint = mulPointEscalar(Base8, totalBalance);
+    expect(decryptedBalance).to.deep.equal(expectedPoint);
+  }
 
-	return totalBalance;
+  return totalBalance;
 };
