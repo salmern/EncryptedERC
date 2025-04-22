@@ -37,11 +37,11 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 //
 /**
  * @title EncryptedERC
- * @notice A privacy-preserving ERC20 token implementation that uses zero-knowledge proofs for managing balances in encrypted manner.
- * @dev This contract implements Encrypted ERC operations using zero-knowledge proofs.
+ * @notice A privacy-preserving ERC20 token implementation that uses zero-knowledge proofs and homomorphic encryption for managing balances in encrypted manner.
+ * @dev This contract implements eERC operations using zero-knowledge proofs.
  *
  * Key features:
- * - Encrypted ERC has 2 modes:
+ * - eERC has 2 modes:
  *   - Standalone Mode: Act like a standalone ERC20 token (mint, burn, transfer)
  *   - Converter Mode: Wraps existing ERC20 tokens and encrypted ERC20 tokens (deposit, withdraw, transfer)
  * - Auditor Manager: Manages auditor's public key
@@ -75,6 +75,16 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
     mapping(uint256 mintNullifier => bool isUsed) public alreadyMinted;
 
     ///////////////////////////////////////////////////
+    ///                   Metadata Struct           ///
+    ///////////////////////////////////////////////////
+    struct Metadata {
+        address messageFrom;
+        address messageTo;
+        string messageType;
+        bytes encryptedMsg;
+    }
+
+    ///////////////////////////////////////////////////
     ///                    Events                   ///
     ///////////////////////////////////////////////////
 
@@ -83,12 +93,14 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
      * @param user Address of the user receiving the minted tokens
      * @param auditorPCT Auditor PCT values for compliance tracking
      * @param auditorAddress Address of the auditor
+     * @param metadata Metadata associated with the operation
      * @dev This event is emitted when tokens are privately minted to a user
      */
     event PrivateMint(
         address indexed user,
         uint256[7] auditorPCT,
-        address indexed auditorAddress
+        address indexed auditorAddress,
+        Metadata indexed metadata
     );
 
     /**
@@ -96,12 +108,14 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
      * @param user Address of the user burning the tokens
      * @param auditorPCT Auditor PCT values for compliance tracking
      * @param auditorAddress Address of the auditor
+     * @param metadata Metadata associated with the operation
      * @dev This event is emitted when tokens are privately burned by a user
      */
     event PrivateBurn(
         address indexed user,
         uint256[7] auditorPCT,
-        address indexed auditorAddress
+        address indexed auditorAddress,
+        Metadata indexed metadata
     );
 
     /**
@@ -110,13 +124,15 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
      * @param to Address of the receiver
      * @param auditorPCT Auditor PCT values for compliance tracking
      * @param auditorAddress Address of the auditor
+     * @param metadata Metadata associated with the operation
      * @dev This event is emitted when tokens are privately transferred between users
      */
     event PrivateTransfer(
-        address indexed from,
-        address indexed to,
+        address from,
+        address to,
         uint256[7] auditorPCT,
-        address indexed auditorAddress
+        address indexed auditorAddress,
+        Metadata indexed metadata
     );
 
     /**
@@ -125,13 +141,15 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
      * @param amount Amount of tokens deposited
      * @param dust Amount of dust (remainder) from the deposit
      * @param tokenId ID of the token being deposited
+     * @param metadata Metadata associated with the operation
      * @dev This event is emitted when a user deposits tokens into the contract
      */
     event Deposit(
         address indexed user,
         uint256 amount,
         uint256 dust,
-        uint256 tokenId
+        uint256 tokenId,
+        Metadata indexed metadata
     );
 
     /**
@@ -141,6 +159,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
      * @param tokenId ID of the token being withdrawn
      * @param auditorPCT Auditor PCT values for compliance tracking
      * @param auditorAddress Address of the auditor
+     * @param metadata Metadata associated with the operation
      * @dev This event is emitted when a user withdraws tokens from the contract
      */
     event Withdraw(
@@ -148,7 +167,8 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
         uint256 amount,
         uint256 tokenId,
         uint256[7] auditorPCT,
-        address indexed auditorAddress
+        address indexed auditorAddress,
+        Metadata indexed metadata
     );
 
     ///////////////////////////////////////////////////
@@ -218,6 +238,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
      * @notice Performs a private mint operation for a registered user
      * @param user The address of the user to mint tokens to
      * @param proof The zero-knowledge proof proving the validity of the mint operation
+     * @param encryptedMsg Encrypted message associated with the operation
      * @dev This function:
      *      1. Validates the chain ID and user registration
      *      2. Verifies the user's public key matches the proof
@@ -235,7 +256,8 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
      */
     function privateMint(
         address user,
-        MintProof calldata proof
+        MintProof calldata proof,
+        bytes calldata encryptedMsg
     ) external onlyOwner onlyIfAuditorSet onlyForStandalone {
         uint256[24] memory publicInputs = proof.publicSignals;
 
@@ -291,13 +313,14 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
         }
 
         // Perform the private mint operation
-        _privateMint(user, mintNullifier, publicInputs);
+        _privateMint(user, mintNullifier, publicInputs, encryptedMsg);
     }
 
     /**
      * @notice Performs a private burn operation
      * @param proof The transfer proof proving the validity of the burn operation
      * @param balancePCT The balance PCT for the sender after the burn
+     * @param encryptedMsg Encrypted message associated with the operation
      * @dev This function:
      *      1. Validates the sender is registered
      *      2. Verifies the sender's public key matches the proof
@@ -314,7 +337,8 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
      */
     function privateBurn(
         TransferProof memory proof,
-        uint256[7] calldata balancePCT
+        uint256[7] calldata balancePCT,
+        bytes calldata encryptedMsg
     ) external onlyIfAuditorSet onlyForStandalone {
         uint256[32] memory publicInputs = proof.publicSignals;
 
@@ -375,7 +399,14 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
                 auditorPCT[i] = publicInputs[25 + i];
             }
 
-            emit PrivateBurn(from, auditorPCT, auditor);
+            Metadata memory metadata_ = Metadata({
+                messageFrom: address(this),
+                messageTo: to,
+                messageType: "burn",
+                encryptedMsg: encryptedMsg
+            });
+
+            emit PrivateBurn(from, auditorPCT, auditor, metadata_);
         }
     }
 
@@ -385,6 +416,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
      * @param tokenId ID of the token to transfer
      * @param proof The transfer proof proving the validity of the transfer
      * @param balancePCT The balance PCT for the sender after the transfer
+     * @param encryptedMsg Encrypted message associated with the operation
      * @dev This function:
      *      1. Validates both sender and receiver are registered
      *      2. Verifies both public keys match the proof
@@ -401,7 +433,8 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
         address to,
         uint256 tokenId,
         TransferProof memory proof,
-        uint256[7] calldata balancePCT
+        uint256[7] calldata balancePCT,
+        bytes calldata encryptedMsg
     ) public onlyIfAuditorSet {
         uint256[32] memory publicInputs = proof.publicSignals;
         address from = msg.sender;
@@ -462,7 +495,14 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
                 auditorPCT[i] = publicInputs[25 + i];
             }
 
-            emit PrivateTransfer(from, to, auditorPCT, auditor);
+            Metadata memory metadata_ = Metadata({
+                messageFrom: from,
+                messageTo: to,
+                messageType: "transfer",
+                encryptedMsg: encryptedMsg
+            });
+
+            emit PrivateTransfer(from, to, auditorPCT, auditor, metadata_);
         }
     }
 
@@ -471,6 +511,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
      * @param amount Amount of tokens to deposit
      * @param tokenAddress Address of the token to deposit
      * @param amountPCT Amount PCT for the deposit
+     * @param encryptedMsg Encrypted message associated with the operation
      * @dev This function:
      *      1. Validates the user is registered
      *      2. Transfers the tokens from the user to the contract
@@ -487,46 +528,86 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
     function deposit(
         uint256 amount,
         address tokenAddress,
-        uint256[7] memory amountPCT
+        uint256[7] memory amountPCT,
+        bytes calldata encryptedMsg
     )
         public
         onlyIfAuditorSet
         onlyForConverter
         revertIfBlacklisted(tokenAddress)
     {
-        IERC20 token = IERC20(tokenAddress);
-        uint256 dust;
-        uint256 tokenId;
-        address to = msg.sender;
-
         // Validate user registration
+        address to = msg.sender;
         if (!registrar.isUserRegistered(to)) {
             revert UserNotRegistered();
         }
 
-        // Get the contract's balance before the transfer
+        // Handle token transfer first
+        (uint256 dust, uint256 tokenId) = _handleTokenTransfer(to, amount, tokenAddress, amountPCT);
+
+        // Emit deposit event
+        _emitDepositEvent(to, amount, dust, tokenId, encryptedMsg);
+    }
+
+    /**
+     * @notice Helper function to handle token transfer for deposit
+     * @param to Address of the user
+     * @param amount Amount of tokens to deposit
+     * @param tokenAddress Address of the token to deposit
+     * @param amountPCT Amount PCT for the deposit
+     * @return dust The dust (remainder) from the deposit
+     * @return tokenId The ID of the token
+     */
+    function _handleTokenTransfer(
+        address to,
+        uint256 amount,
+        address tokenAddress,
+        uint256[7] memory amountPCT
+    ) internal returns (uint256 dust, uint256 tokenId) {
+        IERC20 token = IERC20(tokenAddress);
+
         uint256 balanceBefore = token.balanceOf(address(this));
 
-        // Transfer tokens from user to contract
         SafeERC20.safeTransferFrom(token, to, address(this), amount);
 
-        // Get the contract's balance after the transfer
         uint256 balanceAfter = token.balanceOf(address(this));
 
-        // Verify that the actual transferred amount matches the expected amount
         uint256 actualTransferred = balanceAfter - balanceBefore;
         if (actualTransferred != amount) {
             revert TransferFailed();
         }
 
-        // Convert tokens to encrypted tokens
         (dust, tokenId) = _convertFrom(to, amount, tokenAddress, amountPCT);
 
         // Return dust to user
         SafeERC20.safeTransfer(token, to, dust);
 
-        // Emit deposit event
-        emit Deposit(to, amount, dust, tokenId);
+        return (dust, tokenId);
+    }
+
+    /**
+     * @notice Helper function to emit deposit event
+     * @param to Address of the user
+     * @param amount Amount of tokens to deposit
+     * @param dust Amount of dust (remainder) from the deposit
+     * @param tokenId ID of the token being deposited
+     * @param encryptedMsg Encrypted message associated with the operation
+     */
+    function _emitDepositEvent(
+        address to,
+        uint256 amount,
+        uint256 dust,
+        uint256 tokenId,
+        bytes calldata encryptedMsg
+    ) internal {
+        Metadata memory metadata_ = Metadata({
+            messageFrom: address(this),
+            messageTo: to,
+            messageType: "deposit",
+            encryptedMsg: encryptedMsg
+        });
+
+        emit Deposit(to, amount, dust, tokenId, metadata_);
     }
 
     /**
@@ -534,6 +615,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
      * @param tokenId ID of the token to withdraw
      * @param proof The withdraw proof proving the validity of the withdrawal
      * @param balancePCT The balance PCT for the user after the withdrawal
+     * @param encryptedMsg Encrypted message associated with the operation
      * @dev This function:
      *      1. Validates the user is registered
      *      2. Verifies the user's public key matches the proof
@@ -551,7 +633,8 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
     function withdraw(
         uint256 tokenId,
         WithdrawProof memory proof,
-        uint256[7] memory balancePCT
+        uint256[7] memory balancePCT,
+        bytes calldata encryptedMsg
     ) public onlyIfAuditorSet onlyForConverter {
         address from = msg.sender;
         uint256[16] memory publicInputs = proof.publicSignals;
@@ -599,7 +682,14 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
                 auditorPCT[i] = publicInputs[9 + i];
             }
 
-            emit Withdraw(from, amount, tokenId, auditorPCT, auditor);
+            Metadata memory metadata_ = Metadata({
+                messageFrom: from,
+                messageTo: address(this),
+                messageType: "withdraw",
+                encryptedMsg: encryptedMsg
+            });
+
+            emit Withdraw(from, amount, tokenId, auditorPCT, auditor, metadata_);
         }
     }
 
@@ -827,6 +917,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
      * @param user Address of the user to mint tokens to
      * @param mintNullifier The mint nullifier to prevent double-minting
      * @param input Public inputs from the proof
+     * @param encryptedMsg Encrypted message associated with the operation
      * @dev This function:
      *      1. Extracts the encrypted amount from the proof
      *      2. Adds the encrypted amount to the user's balance
@@ -836,7 +927,8 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
     function _privateMint(
         address user,
         uint256 mintNullifier,
-        uint256[24] memory input
+        uint256[24] memory input,
+        bytes calldata encryptedMsg
     ) internal {
         // Extract the encrypted amount from the proof
         EGCT memory eGCT = EGCT({
@@ -861,8 +953,16 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
         // Mark the mint nullifier as used
         alreadyMinted[mintNullifier] = true;
 
+        // Construct metadata
+        Metadata memory metadata_ = Metadata({
+            messageFrom: address(this),
+            messageTo: user,
+            messageType: "mint",
+            encryptedMsg: encryptedMsg
+        });
+
         // Emit the event
-        emit PrivateMint(user, auditorPCT, auditor);
+        emit PrivateMint(user, auditorPCT, auditor, metadata_);
     }
 
     /**

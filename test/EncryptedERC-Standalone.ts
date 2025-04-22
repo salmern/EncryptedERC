@@ -51,7 +51,7 @@ describe("EncryptedERC - Standalone", () => {
 			mintVerifier,
 			withdrawVerifier,
 			transferVerifier,
-		} = await deployVerifiers(owner);
+		} = await deployVerifiers(owner, false);
 		const babyJubJub = await deployLibrary(owner);
 
 		const registrarFactory = new Registrar__factory(owner);
@@ -287,6 +287,7 @@ describe("EncryptedERC - Standalone", () => {
 						0n,
 						mockTransferProof as TransferProofStruct,
 						Array.from({ length: 7 }, () => 1n),
+						"0x"
 					),
 				).to.be.reverted;
 			});
@@ -338,6 +339,7 @@ describe("EncryptedERC - Standalone", () => {
 						1n,
 						users[0].signer.address,
 						Array.from({ length: 7 }, () => 1n),
+						"0x"
 					),
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidOperation");
 			});
@@ -372,7 +374,7 @@ describe("EncryptedERC - Standalone", () => {
 				await encryptedERC.connect(owner).privateMint(receiver.signer.address, {
 					proofPoints: calldata.proofPoints,
 					publicSignals: calldata.publicSignals,
-				});
+				}, "0x");
 
 				validProof = calldata;
 			});
@@ -381,7 +383,7 @@ describe("EncryptedERC - Standalone", () => {
 				await expect(
 					encryptedERC
 						.connect(users[0].signer)
-						.privateMint(users[0].signer.address, validProof),
+						.privateMint(users[0].signer.address, validProof, "0x"),
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidProof");
 			});
 
@@ -412,7 +414,7 @@ describe("EncryptedERC - Standalone", () => {
 						.privateMint(nonOwner.signer.address, {
 							proofPoints: mockMintProof.proofPoints,
 							publicSignals: mockMintProof.publicSignals,
-						} as MintProofStruct),
+						} as MintProofStruct, "0x"),
 				).to.be.reverted;
 			});
 
@@ -431,7 +433,7 @@ describe("EncryptedERC - Standalone", () => {
 						.privateMint(nonRegisteredUser.signer.address, {
 							proofPoints: mockMintProof.proofPoints,
 							publicSignals: input,
-						} as MintProofStruct),
+						} as MintProofStruct, "0x"),
 				).to.be.revertedWithCustomError(encryptedERC, "UserNotRegistered");
 			});
 
@@ -442,7 +444,7 @@ describe("EncryptedERC - Standalone", () => {
 					encryptedERC.connect(owner).privateMint(user.signer.address, {
 						proofPoints: mockMintProof.proofPoints,
 						publicSignals: mockMintProof.publicSignals,
-					} as MintProofStruct),
+					} as MintProofStruct, "0x"),
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidChainId");
 			});
 
@@ -453,7 +455,7 @@ describe("EncryptedERC - Standalone", () => {
 					encryptedERC.connect(owner).privateMint(user.signer.address, {
 						proofPoints: validProof.proofPoints,
 						publicSignals: validProof.publicSignals,
-					} as MintProofStruct),
+					} as MintProofStruct, "0x"),
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidProof");
 			});
 
@@ -468,7 +470,7 @@ describe("EncryptedERC - Standalone", () => {
 					encryptedERC.connect(owner).privateMint(user.signer.address, {
 						proofPoints: validProof.proofPoints,
 						publicSignals: inputs,
-					}),
+					} as MintProofStruct, "0x"),
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidNullifier");
 			});
 
@@ -479,7 +481,7 @@ describe("EncryptedERC - Standalone", () => {
 					encryptedERC.connect(owner).privateMint(notUser0.signer.address, {
 						proofPoints: validProof.proofPoints,
 						publicSignals: validProof.publicSignals,
-					}),
+					} as MintProofStruct, "0x"),
 				).to.be.reverted;
 			});
 
@@ -497,7 +499,7 @@ describe("EncryptedERC - Standalone", () => {
 					encryptedERC.connect(owner).privateMint(receiver.signer.address, {
 						proofPoints: validProof.proofPoints,
 						publicSignals: _publicInputs,
-					}),
+					} as MintProofStruct, "0x"),
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidProof");
 
 				// only change [16]
@@ -508,7 +510,7 @@ describe("EncryptedERC - Standalone", () => {
 					encryptedERC.connect(owner).privateMint(receiver.signer.address, {
 						proofPoints: validProof.proofPoints,
 						publicSignals: _publicInputs,
-					}),
+					} as MintProofStruct, "0x"),
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidProof");
 			});
 		});
@@ -544,7 +546,7 @@ describe("EncryptedERC - Standalone", () => {
 
 				await encryptedERC
 					.connect(user.signer)
-					.privateBurn(proof, userBalancePCT);
+					.privateBurn(proof, userBalancePCT, "0x");
 
 				validProof = proof;
 			});
@@ -572,6 +574,7 @@ describe("EncryptedERC - Standalone", () => {
 					encryptedERC.connect(user.signer).privateBurn(
 						validProof,
 						Array.from({ length: 7 }, () => 1n),
+						"0x"	
 					),
 				).to.be.reverted;
 			});
@@ -583,6 +586,7 @@ describe("EncryptedERC - Standalone", () => {
 					encryptedERC.connect(nonRegisteredUser.signer).privateBurn(
 						validProof,
 						Array.from({ length: 7 }, () => 1n),
+						"0x"	
 					),
 				).to.be.reverted;
 			});
@@ -594,6 +598,7 @@ describe("EncryptedERC - Standalone", () => {
 					encryptedERC.connect(notUser0.signer).privateBurn(
 						validProof,
 						Array.from({ length: 7 }, () => 1n),
+						"0x"
 					),
 				).to.be.reverted;
 			});
@@ -609,6 +614,7 @@ describe("EncryptedERC - Standalone", () => {
 					encryptedERC.connect(user.signer).privateBurn(
 						validProof,
 						Array.from({ length: 7 }, () => 1n),
+						"0x"
 					),
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidProof");
 			});
@@ -630,6 +636,7 @@ describe("EncryptedERC - Standalone", () => {
 							publicSignals: _publicInputs,
 						} as TransferProofStruct,
 						Array.from({ length: 7 }, () => 1n),
+						"0x"
 					),
 				).to.be.reverted;
 
@@ -644,6 +651,7 @@ describe("EncryptedERC - Standalone", () => {
 							publicSignals: _publicInputs,
 						} as TransferProofStruct,
 						Array.from({ length: 7 }, () => 1n),
+						"0x"
 					),
 				).to.be.reverted;
 			});
@@ -688,7 +696,7 @@ describe("EncryptedERC - Standalone", () => {
 
 					await encryptedERC
 						.connect(owner)
-						.privateMint(USER.signer.address, proof);
+						.privateMint(USER.signer.address, proof, "0x");
 				}
 			});
 
@@ -754,7 +762,7 @@ describe("EncryptedERC - Standalone", () => {
 
 					await encryptedERC
 						.connect(owner)
-						.privateMint(USER.signer.address, proof);
+						.privateMint(USER.signer.address, proof, "0x");
 				}
 			});
 
@@ -794,7 +802,7 @@ describe("EncryptedERC - Standalone", () => {
 			it("3. USER. sends his burn proof", async () => {
 				await encryptedERC
 					.connect(USER.signer)
-					.privateBurn(burnProof.proof, burnProof.senderBalancePCT);
+					.privateBurn(burnProof.proof, burnProof.senderBalancePCT, "0x");
 
 				console.log("USER. balance before burn", userBalance);
 				userBalance = userBalance - burnAmount;
@@ -859,7 +867,7 @@ describe("EncryptedERC - Standalone", () => {
 
 				await encryptedERC
 					.connect(USER.signer)
-					.privateBurn(proof, senderBalancePCT);
+					.privateBurn(proof, senderBalancePCT, "0x");
 
 				console.log("USER. balance before burn", userBalance);
 				userBalance = userBalance - burnAmount;
@@ -922,7 +930,7 @@ describe("EncryptedERC - Standalone", () => {
 
 				await encryptedERC
 					.connect(USER.signer)
-					.privateBurn(proof, senderBalancePCT);
+					.privateBurn(proof, senderBalancePCT, "0x");
 
 				console.log("USER. balance before burn", userBalance);
 				userBalance = userBalance - burnAmount;
@@ -1029,7 +1037,7 @@ describe("EncryptedERC - Standalone", () => {
 				expect(
 					await encryptedERC
 						.connect(sender.signer)
-						.transfer(receiver.signer.address, 0n, proof, senderBalancePCT),
+						.transfer(receiver.signer.address, 0n, proof, senderBalancePCT, "0x"),
 				).to.be.not.reverted;
 
 				validParams = {
@@ -1052,6 +1060,7 @@ describe("EncryptedERC - Standalone", () => {
 							0n,
 							validParams.proof,
 							validParams.senderBalancePCT,
+							"0x"
 						),
 				).to.be.reverted;
 			});
@@ -1122,6 +1131,7 @@ describe("EncryptedERC - Standalone", () => {
 							0n,
 							validParams.proof,
 							validParams.senderBalancePCT,
+							"0x"
 						),
 				).to.be.reverted;
 			});
@@ -1137,6 +1147,7 @@ describe("EncryptedERC - Standalone", () => {
 							0n,
 							validParams.proof,
 							validParams.senderBalancePCT,
+							"0x"
 						),
 				).to.be.reverted;
 			});
@@ -1159,6 +1170,7 @@ describe("EncryptedERC - Standalone", () => {
 							publicSignals: _publicInputs,
 						} as TransferProofStruct,
 						validParams.senderBalancePCT,
+						"0x"
 					),
 				).to.be.reverted;
 
@@ -1175,6 +1187,7 @@ describe("EncryptedERC - Standalone", () => {
 							publicSignals: _publicInputs,
 						} as TransferProofStruct,
 						validParams.senderBalancePCT,
+						"0x"
 					),
 				).to.be.reverted;
 			});
@@ -1197,6 +1210,7 @@ describe("EncryptedERC - Standalone", () => {
 							publicSignals: _publicInputs,
 						} as TransferProofStruct,
 						validParams.senderBalancePCT,
+						"0x"
 					),
 				).to.be.reverted;
 
@@ -1213,6 +1227,7 @@ describe("EncryptedERC - Standalone", () => {
 							publicSignals: _publicInputs,
 						},
 						validParams.senderBalancePCT,
+						"0x"
 					),
 				).to.be.reverted;
 			});
@@ -1237,6 +1252,7 @@ describe("EncryptedERC - Standalone", () => {
 							publicSignals: _publicInputs,
 						} as TransferProofStruct,
 						validParams.senderBalancePCT,
+						"0x"
 					),
 				).to.be.reverted;
 
@@ -1253,6 +1269,7 @@ describe("EncryptedERC - Standalone", () => {
 							publicSignals: _publicInputs,
 						},
 						validParams.senderBalancePCT,
+						"0x"
 					),
 				).to.be.reverted;
 			});

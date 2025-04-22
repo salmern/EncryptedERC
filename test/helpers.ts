@@ -445,3 +445,184 @@ export const getDecryptedBalance = async (
 
   return totalBalance;
 };
+
+// Function to split a BigInt into 250-bit chunks
+function splitIntoBigIntChunks(decimal: string): BigInt[] {
+  const bigIntDecimal = BigInt(decimal);
+  const chunks: BigInt[] = [];
+  
+  // 2^250 as a BigInt
+  const chunkSize = BigInt(2) ** BigInt(250);
+  
+  if (bigIntDecimal === BigInt(0)) {
+    return [BigInt(0)];
+  }
+  
+  let remaining = bigIntDecimal;
+  while (remaining > BigInt(0)) {
+    chunks.push(remaining % chunkSize);
+    remaining = remaining / chunkSize;
+  }
+  
+  return chunks;
+}
+
+// Function to combine BigInt chunks back into a single decimal string
+function combineFromBigIntChunks(chunks: BigInt[]): string {
+  // 2^250 as a BigInt
+  const chunkSize = BigInt(2) ** BigInt(250);
+  
+  let result = BigInt(0);
+  for (let i = chunks.length - 1; i >= 0; i--) {
+    result = result * chunkSize + (chunks[i] as bigint);
+  }
+  
+  return result.toString();
+}
+
+
+/**
+ * Function for converting a string to array of field elements
+ * After the string is converted to integer, the result is split into 250-bit chunks
+ * @param message String to be converted
+ * @returns decimal - Field decimal
+ */
+export const StringToFieldDecimal = (message: string): [BigInt[], bigint] => {
+  const upper_limit = 122; // ASCII code for 'z'
+  const lower_limit = 32; // ASCII code for ' ' (space)
+  let result = "";
+
+  for (const char of message) {
+    if (char.charCodeAt(0) > upper_limit || char.charCodeAt(0) < lower_limit) {
+      throw new Error(`Invalid character: ${char} with code ${char.charCodeAt(0)}. Allowed range [${lower_limit}, ${upper_limit}]`);
+    } else {
+      result += char.charCodeAt(0).toString();
+    }
+  }
+  const resultChunks = splitIntoBigIntChunks(result);
+
+  return [resultChunks, BigInt(resultChunks.length)];
+};
+
+export const FieldDecimalToString = (input: BigInt[]): string => {
+  const upper_limit = 122; // ASCII code for 'z'
+  const lower_limit = 32; // ASCII code for ' ' (space)
+  let result = "";
+
+  const decimal = combineFromBigIntChunks(input);
+  
+  // Special case: if decimal is "0", return empty string
+  if (decimal === "0") {
+    return "";
+  }
+
+  const decimalList = decimal.toString().split('');
+  let lenList = decimalList.length;
+  
+  if (lenList % 2 === 1 || lenList % 2 === 0) {
+    decimalList.push("0");
+    lenList += 1;
+  }
+  
+  let i = 0;
+  while (i < lenList) {
+    try {
+      const nextGroup1 = decimalList[i] + decimalList[i+1];
+      const nextGroup2 = decimalList[i] + decimalList[i+1] + decimalList[i+2];
+      
+      if (parseInt(nextGroup1) <= upper_limit && parseInt(nextGroup1) >= lower_limit) {
+        result += String.fromCharCode(parseInt(nextGroup1));
+        i += 2;
+      } else if (parseInt(nextGroup2) <= upper_limit && parseInt(nextGroup2) >= lower_limit) {
+        result += String.fromCharCode(parseInt(nextGroup2));
+        i += 3;
+      } else {
+        // Only add character if it's in the valid range
+        const charCode = parseInt(decimalList[i]);
+        if (charCode >= lower_limit && charCode <= upper_limit) {
+          result += String.fromCharCode(charCode);
+        }
+        i += 1;
+      }
+    } catch {
+      // Only add character if it's in the valid range
+      const charCode = parseInt(decimalList[i]);
+      if (charCode >= lower_limit && charCode <= upper_limit) {
+        result += String.fromCharCode(charCode);
+      }
+      i += 1;
+    }
+  }
+
+  // Remove any null characters that might have been added
+  return result.replace(/\u0000/g, '');
+}
+
+// uses poseidon ecdh encryption to encrypt the message, just like PCTs but ciphertext is added to the bottom of the message
+// after the message is encrypted, it is converted to bytes
+export const encryptMetadata = (publicKey: bigint[], message: string): string => {
+  // 1. Convert message to field elements
+  const [messageFieldElements, length] = StringToFieldDecimal(message);
+
+  // 2. Encrypt using Poseidon ECDH
+  const {
+    ciphertext: metadataCiphertext,
+    nonce: metadataNonce,
+    authKey: metadataAuthKey,
+  }: { ciphertext: bigint[], nonce: bigint, authKey: [bigint, bigint], encRandom: bigint, poseidonEncryptionKey: [bigint, bigint] } = processPoseidonEncryption(messageFieldElements as bigint[], publicKey);
+
+  // 3. Prepare components for concatenation (each represented as 32 bytes)
+  const componentsToConcat = [
+    ethers.zeroPadValue(ethers.toBeHex(length), 32),     // length (1 * 32 bytes)
+    ethers.zeroPadValue(ethers.toBeHex(metadataNonce), 32),     // nonce (1 * 32 bytes)
+    ethers.zeroPadValue(ethers.toBeHex(metadataAuthKey[0]), 32), // authKey[0] (1 * 32 bytes)
+    ethers.zeroPadValue(ethers.toBeHex(metadataAuthKey[1]), 32), // authKey[1] (1 * 32 bytes)
+    ...metadataCiphertext.map((chunk) => ethers.zeroPadValue(ethers.toBeHex(chunk), 32))
+  ];
+
+  // 4. Concatenate all parts into a single bytes string
+  const encryptedMessageBytes = ethers.concat(componentsToConcat);
+
+  // 5. Return the 0x-prefixed hex string
+  return encryptedMessageBytes;
+};
+
+export const decryptMetadata = (privateKey: bigint, encryptedMessage: string): string => {
+  // Skip '0x' prefix if present
+  const hexData = encryptedMessage.startsWith('0x') ? encryptedMessage.slice(2) : encryptedMessage;
+  
+  // 1. Extract the components from the hex string
+  // Each 32-byte component is 64 hex characters (without 0x prefix)
+  const lengthHex = '0x' + hexData.slice(0, 64);
+  const nonceHex = '0x' + hexData.slice(64, 128);
+  const authKey0Hex = '0x' + hexData.slice(128, 192);
+  const authKey1Hex = '0x' + hexData.slice(192, 256);
+  
+  // Convert hex strings to bigints
+  const length = BigInt(lengthHex);
+  const nonce = BigInt(nonceHex);
+  const authKey: [bigint, bigint] = [BigInt(authKey0Hex), BigInt(authKey1Hex)];
+  
+  // 2. Extract all ciphertext chunks (remaining data after the fixed parts)
+  const ciphertextHex = hexData.slice(256);
+  const ciphertext: bigint[] = [];
+  
+  // Each chunk is 64 hex chars (32 bytes)
+  for (let i = 0; i < ciphertextHex.length; i += 64) {
+    const chunkHex = '0x' + ciphertextHex.slice(i, i + 64);
+    ciphertext.push(BigInt(chunkHex));
+  }
+  
+  // 3. Decrypt the message using the extracted components
+  // Length of 0 means auto-detect the length from the ciphertext
+  const decryptedFieldElements = processPoseidonDecryption(
+    ciphertext,
+    authKey,
+    nonce,
+    privateKey,
+    Number(length)
+  );
+  
+  // 4. Convert the decrypted field elements back to a string
+  return FieldDecimalToString(decryptedFieldElements);
+};
