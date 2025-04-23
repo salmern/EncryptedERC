@@ -14,7 +14,7 @@ import {BabyJubJub} from "./libraries/BabyJubJub.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // types
-import {CreateEncryptedERCParams, Point, EGCT, EncryptedBalance, AmountPCT, MintProof, TransferProof, WithdrawProof} from "./types/Types.sol";
+import {CreateEncryptedERCParams, Point, EGCT, EncryptedBalance, AmountPCT, MintProof, TransferProof, WithdrawProof, Metadata} from "./types/Types.sol";
 
 // errors
 import {UserNotRegistered, InvalidProof, TransferFailed, UnknownToken, InvalidChainId, InvalidNullifier, ZeroAddress} from "./errors/Errors.sol";
@@ -73,16 +73,6 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
 
     /// @notice Mapping to track used mint nullifiers to prevent double-minting
     mapping(uint256 mintNullifier => bool isUsed) public alreadyMinted;
-
-    ///////////////////////////////////////////////////
-    ///                   Metadata Struct           ///
-    ///////////////////////////////////////////////////
-    struct Metadata {
-        address messageFrom;
-        address messageTo;
-        string messageType;
-        bytes encryptedMsg;
-    }
 
     ///////////////////////////////////////////////////
     ///                    Events                   ///
@@ -543,71 +533,15 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
         }
 
         // Handle token transfer first
-        (uint256 dust, uint256 tokenId) = _handleTokenTransfer(to, amount, tokenAddress, amountPCT);
+        (uint256 dust, uint256 tokenId) = _handleTokenTransfer(
+            to,
+            amount,
+            tokenAddress,
+            amountPCT
+        );
 
         // Emit deposit event
         _emitDepositEvent(to, amount, dust, tokenId, encryptedMsg);
-    }
-
-    /**
-     * @notice Helper function to handle token transfer for deposit
-     * @param to Address of the user
-     * @param amount Amount of tokens to deposit
-     * @param tokenAddress Address of the token to deposit
-     * @param amountPCT Amount PCT for the deposit
-     * @return dust The dust (remainder) from the deposit
-     * @return tokenId The ID of the token
-     */
-    function _handleTokenTransfer(
-        address to,
-        uint256 amount,
-        address tokenAddress,
-        uint256[7] memory amountPCT
-    ) internal returns (uint256 dust, uint256 tokenId) {
-        IERC20 token = IERC20(tokenAddress);
-
-        uint256 balanceBefore = token.balanceOf(address(this));
-
-        SafeERC20.safeTransferFrom(token, to, address(this), amount);
-
-        uint256 balanceAfter = token.balanceOf(address(this));
-
-        uint256 actualTransferred = balanceAfter - balanceBefore;
-        if (actualTransferred != amount) {
-            revert TransferFailed();
-        }
-
-        (dust, tokenId) = _convertFrom(to, amount, tokenAddress, amountPCT);
-
-        // Return dust to user
-        SafeERC20.safeTransfer(token, to, dust);
-
-        return (dust, tokenId);
-    }
-
-    /**
-     * @notice Helper function to emit deposit event
-     * @param to Address of the user
-     * @param amount Amount of tokens to deposit
-     * @param dust Amount of dust (remainder) from the deposit
-     * @param tokenId ID of the token being deposited
-     * @param encryptedMsg Encrypted message associated with the operation
-     */
-    function _emitDepositEvent(
-        address to,
-        uint256 amount,
-        uint256 dust,
-        uint256 tokenId,
-        bytes calldata encryptedMsg
-    ) internal {
-        Metadata memory metadata_ = Metadata({
-            messageFrom: address(this),
-            messageTo: to,
-            messageType: "deposit",
-            encryptedMsg: encryptedMsg
-        });
-
-        emit Deposit(to, amount, dust, tokenId, metadata_);
     }
 
     /**
@@ -689,7 +623,14 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
                 encryptedMsg: encryptedMsg
             });
 
-            emit Withdraw(from, amount, tokenId, auditorPCT, auditor, metadata_);
+            emit Withdraw({
+                user: from,
+                amount: amount,
+                tokenId: tokenId,
+                auditorPCT: auditorPCT,
+                auditorAddress: auditor,
+                metadata: metadata_
+            });
         }
     }
 
@@ -725,6 +666,67 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
     ///////////////////////////////////////////////////
     ///                   Internal                  ///
     ///////////////////////////////////////////////////
+
+    /**
+     * @notice Helper function to handle token transfer for deposit
+     * @param to Address of the user
+     * @param amount Amount of tokens to deposit
+     * @param tokenAddress Address of the token to deposit
+     * @param amountPCT Amount PCT for the deposit
+     * @return dust The dust (remainder) from the deposit
+     * @return tokenId The ID of the token
+     */
+    function _handleTokenTransfer(
+        address to,
+        uint256 amount,
+        address tokenAddress,
+        uint256[7] memory amountPCT
+    ) internal returns (uint256 dust, uint256 tokenId) {
+        IERC20 token = IERC20(tokenAddress);
+
+        uint256 balanceBefore = token.balanceOf(address(this));
+
+        SafeERC20.safeTransferFrom(token, to, address(this), amount);
+
+        uint256 balanceAfter = token.balanceOf(address(this));
+
+        uint256 actualTransferred = balanceAfter - balanceBefore;
+        if (actualTransferred != amount) {
+            revert TransferFailed();
+        }
+
+        (dust, tokenId) = _convertFrom(to, amount, tokenAddress, amountPCT);
+
+        // Return dust to user
+        SafeERC20.safeTransfer(token, to, dust);
+
+        return (dust, tokenId);
+    }
+
+    /**
+     * @notice Helper function to emit deposit event
+     * @param to Address of the user
+     * @param amount Amount of tokens to deposit
+     * @param dust Amount of dust (remainder) from the deposit
+     * @param tokenId ID of the token being deposited
+     * @param encryptedMsg Encrypted message associated with the operation
+     */
+    function _emitDepositEvent(
+        address to,
+        uint256 amount,
+        uint256 dust,
+        uint256 tokenId,
+        bytes calldata encryptedMsg
+    ) internal {
+        Metadata memory metadata_ = Metadata({
+            messageFrom: address(this),
+            messageTo: to,
+            messageType: "deposit",
+            encryptedMsg: encryptedMsg
+        });
+
+        emit Deposit(to, amount, dust, tokenId, metadata_);
+    }
 
     /**
      * @notice Performs the internal logic for a private withdrawal
