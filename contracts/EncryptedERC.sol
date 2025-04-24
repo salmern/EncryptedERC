@@ -395,7 +395,12 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
         }
 
         // Perform the private mint operation
-        _privateMintWithMetadata(user, mintNullifier, publicInputs, encryptedMsg);
+        _privateMintWithMetadata(
+            user,
+            mintNullifier,
+            publicInputs,
+            encryptedMsg
+        );
     }
 
     /**
@@ -490,7 +495,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
         }
     }
 
-        /**
+    /**
      * @notice Performs a private burn operation
      * @param proof The transfer proof proving the validity of the burn operation
      * @param balancePCT The balance PCT for the sender after the burn
@@ -678,7 +683,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
         }
     }
 
-        /**
+    /**
      * @notice Performs a private transfer between two users
      * @param to Address of the receiver
      * @param tokenId ID of the token to transfer
@@ -824,7 +829,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
         });
 
         // Emit deposit event
-         emit Deposit(to, amount, dust, tokenId, metadata_);
+        emit Deposit(to, amount, dust, tokenId, metadata_);
     }
 
     function depositWithMetadata(
@@ -944,7 +949,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
         }
     }
 
-        /**
+    /**
      * @notice Withdraws encrypted tokens as regular ERC20 tokens
      * @param tokenId ID of the token to withdraw
      * @param proof The withdraw proof proving the validity of the withdrawal
@@ -1034,6 +1039,25 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
         }
     }
 
+    function sendEncryptedMessage(
+        address to,
+        bytes calldata encryptedMsg
+    ) public {
+        // Validate user registration
+        if (!registrar.isUserRegistered(to)) {
+            revert UserNotRegistered();
+        }
+
+        Metadata memory metadata_ = Metadata({
+            messageFrom: msg.sender,
+            messageTo: to,
+            messageType: "message",
+            encryptedMsg: encryptedMsg
+        });
+
+        emit PrivateMessage(msg.sender, to, metadata_);
+    }
+
     /**
      * @notice Gets the encrypted balance for a token address
      * @param user Address of the user
@@ -1061,25 +1085,6 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
     {
         uint256 tokenId = tokenIds[tokenAddress];
         return balanceOf(user, tokenId);
-    }
-
-    function sendEncryptedMessage(
-        address to,
-        bytes calldata encryptedMsg
-    ) public {
-        // Validate user registration
-        if (!registrar.isUserRegistered(to)) {
-            revert UserNotRegistered();
-        }
-
-        Metadata memory metadata_ = Metadata({
-                messageFrom: msg.sender,
-                messageTo: to,
-                messageType: "message",
-                encryptedMsg: encryptedMsg
-            });
-
-        emit PrivateMessage(msg.sender, to, metadata_);
     }
 
     ///////////////////////////////////////////////////
@@ -1384,7 +1389,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
         emit PrivateMint(user, auditorPCT, auditor, metadata_);
     }
 
-   /**
+    /**
      * @notice Performs the internal logic for a private mint
      * @param user Address of the user to mint tokens to
      * @param mintNullifier The mint nullifier to prevent double-minting
