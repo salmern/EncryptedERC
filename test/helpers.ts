@@ -468,7 +468,7 @@ function splitIntoBigIntChunks(decimal: string): BigInt[] {
 }
 
 // Function to combine BigInt chunks back into a single decimal string
-function combineFromBigIntChunks(chunks: BigInt[]): string {
+function combineFromBigIntChunks(chunks: BigInt[]): bigint {
   // 2^250 as a BigInt
   const chunkSize = BigInt(2) ** BigInt(250);
   
@@ -477,90 +477,58 @@ function combineFromBigIntChunks(chunks: BigInt[]): string {
     result = result * chunkSize + (chunks[i] as bigint);
   }
   
-  return result.toString();
+  return result;
 }
 
-
 /**
- * Function for converting a string to array of field elements
- * After the string is converted to integer, the result is split into 250-bit chunks
- * @param message String to be converted
- * @returns decimal - Field decimal
+ * Convert a UTF-8 string into a big integer by interpreting its bytes as a base-256 number.
  */
-export const StringToFieldDecimal = (message: string): [BigInt[], bigint] => {
-  const upper_limit = 122; // ASCII code for 'z'
-  const lower_limit = 32; // ASCII code for ' ' (space)
-  let result = "";
-
-  for (const char of message) {
-    if (char.charCodeAt(0) > upper_limit || char.charCodeAt(0) < lower_limit) {
-      throw new Error(`Invalid character: ${char} with code ${char.charCodeAt(0)}. Allowed range [${lower_limit}, ${upper_limit}]`);
-    } else {
-      result += char.charCodeAt(0).toString();
-    }
+export function str2int(s: string): [BigInt[], bigint] {
+  // Handle empty string case
+  if (s === "") {
+    return [[BigInt(0)], BigInt(1)];
   }
-  const resultChunks = splitIntoBigIntChunks(result);
+  
+  // in browsers use TextEncoder
+  const buf = Buffer.from(s, 'utf8');  
+  const hexString = buf.toString('hex');
+  // Add check for empty hex string
+  const result = hexString === '' ? BigInt(0) : BigInt('0x' + hexString);
+  const resultChunks = splitIntoBigIntChunks(result.toString());
 
   return [resultChunks, BigInt(resultChunks.length)];
-};
+}
 
-export const FieldDecimalToString = (input: BigInt[]): string => {
-  const upper_limit = 122; // ASCII code for 'z'
-  const lower_limit = 32; // ASCII code for ' ' (space)
-  let result = "";
-
-  const decimal = combineFromBigIntChunks(input);
-  
-  // Special case: if decimal is "0", return empty string
-  if (decimal === "0") {
+/**
+ * Convert a big integer back into a UTF-8 string by reversing the above process.
+ */
+export function int2str(input: BigInt[]): string {
+  // Special case for empty string
+  if (input.length === 1 && input[0] === BigInt(0)) {
     return "";
   }
-
-  const decimalList = decimal.toString().split('');
-  let lenList = decimalList.length;
   
-  if (lenList % 2 === 1 || lenList % 2 === 0) { // todo: remove this
-    decimalList.push("0");
-    lenList += 1;
+  const decimal = combineFromBigIntChunks(input);
+  
+  // Return empty string if the decimal is 0
+  if (decimal === 0n) {
+    return "";
   }
   
-  let i = 0;
-  while (i < lenList) {
-    try {
-      const nextGroup1 = decimalList[i] + decimalList[i+1];
-      const nextGroup2 = decimalList[i] + decimalList[i+1] + decimalList[i+2];
-      
-      if (parseInt(nextGroup1) <= upper_limit && parseInt(nextGroup1) >= lower_limit) {
-        result += String.fromCharCode(parseInt(nextGroup1));
-        i += 2;
-      } else if (parseInt(nextGroup2) <= upper_limit && parseInt(nextGroup2) >= lower_limit) {
-        result += String.fromCharCode(parseInt(nextGroup2));
-        i += 3;
-      } else {
-        // Only add character if it's in the valid range
-        const charCode = parseInt(decimalList[i]);
-        if (charCode >= lower_limit && charCode <= upper_limit) {
-          result += String.fromCharCode(charCode);
-        }
-        i += 1;
-      }
-    } catch {
-      const charCode = parseInt(decimalList[i]);
-      if (charCode >= lower_limit && charCode <= upper_limit) {
-        result += String.fromCharCode(charCode);
-      }
-      i += 1;
-    }
+  let hex = decimal.toString(16);
+  if (hex.length % 2 !== 0) {
+    hex = '0' + hex;
   }
-
-  // Remove any null characters that might have been added
-  return result.replace(/\u0000/g, '');
+  const buf = Buffer.from(hex, 'hex');
+  
+  // Remove null characters from the result
+  return buf.toString('utf8').replace(/\u0000/g, '');
 }
 
 // uses poseidon ecdh encryption to encrypt the message, just like PCTs but ciphertext is added to the bottom of the message
 // after the message is encrypted, it is converted to bytes
 export const encryptMetadata = (publicKey: bigint[], message: string): string => {
-  const [messageFieldElements, length] = StringToFieldDecimal(message);
+  const [messageFieldElements, length] = str2int(message);
 
   const {
     ciphertext: metadataCiphertext,
@@ -609,5 +577,5 @@ export const decryptMetadata = (privateKey: bigint, encryptedMessage: string): s
     Number(length)
   );
   
-  return FieldDecimalToString(decryptedFieldElements);
+  return int2str(decryptedFieldElements);
 };

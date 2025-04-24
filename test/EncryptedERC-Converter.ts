@@ -218,7 +218,7 @@ describe("EncryptedERC - Converter", () => {
 					encryptedERC.connect(users[0].signer).privateBurn(
 						mockTransferProof as TransferProofStruct,
 						Array.from({ length: 7 }, () => 1n),
-						"0x"
+						
 					),
 				).to.be.reverted;
 			});
@@ -230,7 +230,7 @@ describe("EncryptedERC - Converter", () => {
 						.privateMint(
 							users[0].signer.address,
 							mockMintProof as MintProofStruct,
-							"0x"
+							
 						),
 				).to.be.reverted;
 			});
@@ -252,7 +252,7 @@ describe("EncryptedERC - Converter", () => {
 					encryptedERC.connect(users[0].signer).privateBurn(
 						mockTransferProof as TransferProofStruct,
 						Array.from({ length: 7 }, () => 1n),
-						"0x"
+						
 					),
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidOperation");
 			});
@@ -264,7 +264,7 @@ describe("EncryptedERC - Converter", () => {
 						.privateMint(
 							users[0].signer.address,
 							mockMintProof as MintProofStruct,
-							"0x"
+							
 						),
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidOperation");
 			});
@@ -362,7 +362,7 @@ describe("EncryptedERC - Converter", () => {
 							...ciphertext,
 							...authKey,
 							nonce,
-						], "0x");
+						], );
 
 					const erc20BalanceAfter = await erc20.balanceOf(owner.address);
 					expect(erc20BalanceAfter).to.equal(
@@ -413,7 +413,7 @@ describe("EncryptedERC - Converter", () => {
 							...ciphertext,
 							...authKey,
 							nonce,
-						], "0x"),
+						], ),
 				).to.be.revertedWithCustomError(encryptedERC, "TransferFailed");
 			});
 
@@ -429,7 +429,7 @@ describe("EncryptedERC - Converter", () => {
 						1n,
 						users[0].signer.address,
 						Array.from({ length: 7 }, () => 1n),
-						"0x"
+						
 					),
 				).to.be.reverted;
 			});
@@ -440,7 +440,7 @@ describe("EncryptedERC - Converter", () => {
 						1n,
 						blacklistedERC20.target,
 						Array.from({ length: 7 }, () => 1n),
-						"0x"
+						
 					),
 				).to.be.reverted;
 			});
@@ -524,7 +524,7 @@ describe("EncryptedERC - Converter", () => {
 							...ciphertext,
 							...authKey,
 							nonce,
-						], "0x");
+						], );
 
 					const erc20BalanceAfter = await erc20.balanceOf(owner.address);
 					expect(erc20BalanceAfter).to.equal(
@@ -566,7 +566,7 @@ describe("EncryptedERC - Converter", () => {
 						1n,
 						erc20s[0].target,
 						Array.from({ length: 7 }, () => 1n),
-						"0x"
+						
 					),
 				).to.be.reverted;
 			});
@@ -655,7 +655,7 @@ describe("EncryptedERC - Converter", () => {
 							...ciphertext,
 							...authKey,
 							nonce,
-						], "0x");
+						]);
 
 					const erc20BalanceAfter = await erc20.balanceOf(owner.address);
 					expect(erc20BalanceAfter).to.equal(
@@ -721,7 +721,7 @@ describe("EncryptedERC - Converter", () => {
 						1n,
 						blacklistedERC20.target,
 						Array.from({ length: 7 }, () => 1n),
-						"0x"
+						
 					),
 				).to.be.reverted;
 			});
@@ -773,7 +773,7 @@ describe("EncryptedERC - Converter", () => {
 				expect(
 					await encryptedERC
 						.connect(user.signer)
-						.withdraw(tokenId, proof, userBalancePCT, "0x"),
+						.withdraw(tokenId, proof, userBalancePCT, ),
 				).to.be.not.reverted;
 
 				validProof = { proof, userBalancePCT };
@@ -802,7 +802,7 @@ describe("EncryptedERC - Converter", () => {
 				await expect(
 					encryptedERC
 						.connect(user.signer)
-						.withdraw(tokenId, validProof.proof, validProof.userBalancePCT, "0x"),
+						.withdraw(tokenId, validProof.proof, validProof.userBalancePCT, ),
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidProof");
 			});
 
@@ -819,7 +819,7 @@ describe("EncryptedERC - Converter", () => {
 							publicSignals: _publicInputs,
 						},
 						validProof.userBalancePCT,
-						"0x"
+						
 					),
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidProof");
 			});
@@ -871,7 +871,7 @@ describe("EncryptedERC - Converter", () => {
 				expect(
 					await encryptedERC
 						.connect(user.signer)
-						.withdraw(tokenId, proof, userBalancePCT, "0x"),
+						.withdraw(tokenId, proof, userBalancePCT, ),
 				).to.be.not.reverted;
 
 				validProof = { proof, userBalancePCT };
@@ -906,7 +906,7 @@ describe("EncryptedERC - Converter", () => {
 							publicSignals: _publicInputs,
 						},
 						validProof.userBalancePCT,
-						"0x"
+						
 					),
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidProof");
 			});
@@ -924,7 +924,7 @@ describe("EncryptedERC - Converter", () => {
 							publicSignals: _proof,
 						},
 						validProof.userBalancePCT,
-						"0x"
+						
 					),
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidProof");
 			});
@@ -935,7 +935,7 @@ describe("EncryptedERC - Converter", () => {
 				await expect(
 					encryptedERC
 						.connect(user.signer)
-						.withdraw(10n, validProof.proof, validProof.userBalancePCT, "0x"),
+						.withdraw(10n, validProof.proof, validProof.userBalancePCT, ),
 				).to.be.revertedWithCustomError(encryptedERC, "UnknownToken");
 			});
 		});
@@ -985,7 +985,7 @@ describe("EncryptedERC - Converter", () => {
 				expect(
 					await encryptedERC
 						.connect(user.signer)
-						.withdraw(tokenId, proof, userBalancePCT, "0x"),
+						.withdraw(tokenId, proof, userBalancePCT, ),
 				).to.be.not.reverted;
 
 				validProof = { proof, userBalancePCT };
@@ -1047,7 +1047,7 @@ describe("EncryptedERC - Converter", () => {
 				expect(
 					await encryptedERC
 						.connect(sender.signer)
-						.transfer(receiver.signer.address, 1n, proof, senderBalancePCT, "0x"),
+						.transfer(receiver.signer.address, 1n, proof, senderBalancePCT, ),
 				).to.be.not.reverted;
 
 				senderBalance = senderBalance - transferAmount;

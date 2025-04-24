@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import {
-  StringToFieldDecimal,
-  FieldDecimalToString,
+  str2int,
+  int2str,
   encryptMetadata,
   decryptMetadata
 } from "./helpers";
@@ -22,7 +22,7 @@ describe("Metadata Functions", function() {
     privateKey = user.privateKey;
   });
 
-  describe("StringToFieldDecimal and FieldDecimalToString", function() {
+  describe("str2int and int2str", function() {
     const testStrings = [
       "",                                           // Empty string
       "Hello, World!",                              // Basic ASCII
@@ -30,37 +30,29 @@ describe("Metadata Functions", function() {
     ];
 
     it("should handle empty string", async function() {
-      const [chunks, length] = StringToFieldDecimal("");
+      const [chunks, length] = str2int("");
       expect(length).to.be.equal(1n);
       expect(chunks.length).to.be.equal(1);
       expect(chunks[0].toString()).to.be.equal("0");
       
-      const roundTrip = FieldDecimalToString(chunks);
+      const roundTrip = int2str(chunks);
       expect(roundTrip).to.be.equal("");
     });
 
     it("should convert strings to field elements and back", async function() {
       for (const testString of testStrings) {
-        const [chunks, length] = StringToFieldDecimal(testString);
+        const [chunks, length] = str2int(testString);
 
-        const roundTrip = FieldDecimalToString(chunks);
+        const roundTrip = int2str(chunks);
         expect(roundTrip).to.be.equal(testString);
       }
     });
 
-    it("should throw error for invalid characters", async function() {
-      // Characters outside the range [32, 122]
-      const invalidChars = ["\u0000", "\u001F", "\u007B"];
-      
-      for (const char of invalidChars) {
-        expect(() => StringToFieldDecimal(char)).to.throw(/Invalid character/);
-      }
-    });
 
     it("should handle max length strings", async function() {
       const longString = "a".repeat(100);
-      const [chunks, length] = StringToFieldDecimal(longString);
-      const roundTrip = FieldDecimalToString(chunks);
+      const [chunks, length] = str2int(longString);
+      const roundTrip = int2str(chunks);
       expect(roundTrip).to.be.equal(longString);
     });
   });
@@ -91,7 +83,7 @@ describe("Metadata Functions", function() {
 
     it("should handle special characters within allowed range", async function() {
       // Test with special characters in the allowed range [32, 122]
-      const specialChars = ".,!?";
+      const specialChars = ".,!?^&*()_+-=[]{}|\\:;<>,.?/";
       
       const encrypted = encryptMetadata(publicKey, specialChars);
       const decrypted = decryptMetadata(privateKey, encrypted);
@@ -148,7 +140,6 @@ describe("Metadata Functions", function() {
 
   describe("Cross-function Integration", function() {
     it("should work with empty string", async function() {
-      const [chunks, length] = StringToFieldDecimal("");
       const encrypted = encryptMetadata(publicKey, "");
       const decrypted = decryptMetadata(privateKey, encrypted);
       expect(decrypted).to.be.equal("");
