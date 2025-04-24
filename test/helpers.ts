@@ -447,9 +447,9 @@ export const getDecryptedBalance = async (
 };
 
 // Function to split a BigInt into 250-bit chunks
-function splitIntoBigIntChunks(decimal: string): BigInt[] {
+function splitIntoBigIntChunks(decimal: string): bigint[] {
   const bigIntDecimal = BigInt(decimal);
-  const chunks: BigInt[] = [];
+  const chunks: bigint[] = [];
   
   // 2^250 as a BigInt
   const chunkSize = BigInt(2) ** BigInt(250);
@@ -468,7 +468,7 @@ function splitIntoBigIntChunks(decimal: string): BigInt[] {
 }
 
 // Function to combine BigInt chunks back into a single decimal string
-function combineFromBigIntChunks(chunks: BigInt[]): bigint {
+function combineFromBigIntChunks(chunks: bigint[]): bigint {
   // 2^250 as a BigInt
   const chunkSize = BigInt(2) ** BigInt(250);
   
@@ -483,7 +483,7 @@ function combineFromBigIntChunks(chunks: BigInt[]): bigint {
 /**
  * Convert a UTF-8 string into a big integer by interpreting its bytes as a base-256 number.
  */
-export function str2int(s: string): [BigInt[], bigint] {
+export function str2int(s: string): [bigint[], bigint] {
   // Handle empty string case
   if (s === "") {
     return [[BigInt(0)], BigInt(1)];
@@ -493,7 +493,7 @@ export function str2int(s: string): [BigInt[], bigint] {
   const buf = Buffer.from(s, 'utf8');  
   const hexString = buf.toString('hex');
   // Add check for empty hex string
-  const result = hexString === '' ? BigInt(0) : BigInt('0x' + hexString);
+  const result = hexString === '' ? BigInt(0) : BigInt(`0x${hexString}`);
   const resultChunks = splitIntoBigIntChunks(result.toString());
 
   return [resultChunks, BigInt(resultChunks.length)];
@@ -502,7 +502,7 @@ export function str2int(s: string): [BigInt[], bigint] {
 /**
  * Convert a big integer back into a UTF-8 string by reversing the above process.
  */
-export function int2str(input: BigInt[]): string {
+export function int2str(input: bigint[]): string {
   // Special case for empty string
   if (input.length === 1 && input[0] === BigInt(0)) {
     return "";
@@ -517,12 +517,13 @@ export function int2str(input: BigInt[]): string {
   
   let hex = decimal.toString(16);
   if (hex.length % 2 !== 0) {
-    hex = '0' + hex;
+    hex = `0${hex}`;
   }
   const buf = Buffer.from(hex, 'hex');
   
   // Remove null characters from the result
-  return buf.toString('utf8').replace(/\u0000/g, '');
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: We need to remove null characters from the result
+  return buf.toString('utf8').replace(/\u0000/g, ''); 
 }
 
 // uses poseidon ecdh encryption to encrypt the message, just like PCTs but ciphertext is added to the bottom of the message
@@ -552,10 +553,10 @@ export const encryptMetadata = (publicKey: bigint[], message: string): string =>
 export const decryptMetadata = (privateKey: bigint, encryptedMessage: string): string => {
   const hexData = encryptedMessage.startsWith('0x') ? encryptedMessage.slice(2) : encryptedMessage;
   
-  const lengthHex = '0x' + hexData.slice(0, 64);
-  const nonceHex = '0x' + hexData.slice(64, 128);
-  const authKey0Hex = '0x' + hexData.slice(128, 192);
-  const authKey1Hex = '0x' + hexData.slice(192, 256);
+  const lengthHex = `0x${hexData.slice(0, 64)}`;
+  const nonceHex = `0x${hexData.slice(64, 128)}`;
+  const authKey0Hex = `0x${hexData.slice(128, 192)}`;
+  const authKey1Hex = `0x${hexData.slice(192, 256)}`;
   
   const length = BigInt(lengthHex);
   const nonce = BigInt(nonceHex);
@@ -565,7 +566,7 @@ export const decryptMetadata = (privateKey: bigint, encryptedMessage: string): s
   const ciphertext: bigint[] = [];
   
   for (let i = 0; i < ciphertextHex.length; i += 64) {
-    const chunkHex = '0x' + ciphertextHex.slice(i, i + 64);
+    const chunkHex = `0x${ciphertextHex.slice(i, i + 64)}`;
     ciphertext.push(BigInt(chunkHex));
   }
   

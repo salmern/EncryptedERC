@@ -8,13 +8,13 @@ import {
 } from "./helpers";
 import { User } from "./user";
 
-describe("Metadata Functions", function() {
+describe("Metadata Functions", () => {
   // Generate a key pair for testing
   let user: User;
   let publicKey: bigint[];
   let privateKey: bigint;
   
-  before(async function() {
+  before(async () => {
     // Get a signer for the user
     const [signer] = await ethers.getSigners();
     user = new User(signer);
@@ -22,14 +22,14 @@ describe("Metadata Functions", function() {
     privateKey = user.privateKey;
   });
 
-  describe("str2int and int2str", function() {
+  describe("str2int and int2str", () => {
     const testStrings = [
       "",                                           // Empty string
       "Hello, World!",                              // Basic ASCII
       "The quick brown fox jumps over the lazy dog" // Longer text
     ];
 
-    it("should handle empty string", async function() {
+    it("should handle empty string", async () => {
       const [chunks, length] = str2int("");
       expect(length).to.be.equal(1n);
       expect(chunks.length).to.be.equal(1);
@@ -39,7 +39,7 @@ describe("Metadata Functions", function() {
       expect(roundTrip).to.be.equal("");
     });
 
-    it("should convert strings to field elements and back", async function() {
+    it("should convert strings to field elements and back", async () => {
       for (const testString of testStrings) {
         const [chunks, length] = str2int(testString);
 
@@ -49,7 +49,7 @@ describe("Metadata Functions", function() {
     });
 
 
-    it("should handle max length strings", async function() {
+    it("should handle max length strings", async () => {
       const longString = "a".repeat(100);
       const [chunks, length] = str2int(longString);
       const roundTrip = int2str(chunks);
@@ -57,14 +57,14 @@ describe("Metadata Functions", function() {
     });
   });
 
-  describe("encryptMetadata and decryptMetadata", function() {
+  describe("encryptMetadata and decryptMetadata", () => {
     const testMessages = [
       "",                                           
       "Hello",                                      
       "The quick brown fox jumps over the lazy dog" 
     ];
 
-    it("should round-trip encrypt and decrypt messages", async function() {
+    it("should round-trip encrypt and decrypt messages", async () => {
       for (const message of testMessages) {
         // Encrypt the message
         const encrypted = encryptMetadata(publicKey, message);
@@ -81,7 +81,7 @@ describe("Metadata Functions", function() {
       }
     });
 
-    it("should handle special characters within allowed range", async function() {
+    it("should handle special characters within allowed range", async () => {
       // Test with special characters in the allowed range [32, 122]
       const specialChars = ".,!?^&*()_+-=[]{}|\\:;<>,.?/";
       
@@ -91,7 +91,7 @@ describe("Metadata Functions", function() {
       expect(decrypted).to.be.equal(specialChars);
     });
 
-    it("should produce different ciphertexts for the same message", async function() {
+    it("should produce different ciphertexts for the same message", async () => {
       // Due to the nature of encryption, the same message should encrypt to different ciphertexts
       const message = "Test message";
       
@@ -106,7 +106,7 @@ describe("Metadata Functions", function() {
       expect(decryptMetadata(privateKey, encrypted2)).to.equal(message);
     });
 
-    it("should have the expected format for encrypted data", async function() {
+    it("should have the expected format for encrypted data", async () => {
       const message = "Test format";
       const encrypted = encryptMetadata(publicKey, message);
       
@@ -118,19 +118,19 @@ describe("Metadata Functions", function() {
       
       // Length should be a valid hex number
       const lengthHex = hexData.slice(0, 64);
-      expect(() => BigInt("0x" + lengthHex)).to.not.throw();
+      expect(() => BigInt(`0x${lengthHex}`)).to.not.throw();
       
       // Nonce should be a valid hex number
       const nonceHex = hexData.slice(64, 128);
-      expect(() => BigInt("0x" + nonceHex)).to.not.throw();
+      expect(() => BigInt(`0x${nonceHex}`)).to.not.throw();
       
       // authKey[0] should be a valid hex number
       const authKey0Hex = hexData.slice(128, 192);
-      expect(() => BigInt("0x" + authKey0Hex)).to.not.throw();
+      expect(() => BigInt(`0x${authKey0Hex}`)).to.not.throw();
       
       // authKey[1] should be a valid hex number
       const authKey1Hex = hexData.slice(192, 256);
-      expect(() => BigInt("0x" + authKey1Hex)).to.not.throw();
+      expect(() => BigInt(`0x${authKey1Hex}`)).to.not.throw();
       
       // Remaining data should be a multiple of 64 (32 bytes)
       const ciphertextHex = hexData.slice(256);
@@ -138,14 +138,14 @@ describe("Metadata Functions", function() {
     });
   });
 
-  describe("Cross-function Integration", function() {
-    it("should work with empty string", async function() {
+  describe("Cross-function Integration", () => {
+    it("should work with empty string", async () => {
       const encrypted = encryptMetadata(publicKey, "");
       const decrypted = decryptMetadata(privateKey, encrypted);
       expect(decrypted).to.be.equal("");
     });
 
-    it("should handle the maximum message size", async function() {
+    it("should handle the maximum message size", async () => {
       // Create a message that is large but still under the limit
       const largeMessage = "a".repeat(2000);
       
@@ -155,7 +155,7 @@ describe("Metadata Functions", function() {
       expect(decrypted).to.be.equal(largeMessage);
     });
 
-    it("should work with different key pairs", async function() {
+    it("should work with different key pairs", async () => {
       const message = "Test message";
       
       // Generate a new key pair

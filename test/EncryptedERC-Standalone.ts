@@ -418,7 +418,7 @@ describe("EncryptedERC - Standalone", () => {
 				).to.be.reverted;
 			});
 
-			it("should support sending encrypted metadata with mint", async function() {
+			it("should support sending encrypted metadata with mint", async () => {
 				const receiver = users[1];
 				const metadataMessage = "Mint transaction metadata testing.";
 				
@@ -564,7 +564,7 @@ describe("EncryptedERC - Standalone", () => {
 			const burnAmount = 100n;
 			let userBalance = 0n;
 			let validProof: TransferProofStruct;
-			let metadataMessage = "Burn transaction metadata testing.";
+			const metadataMessage = "Burn transaction metadata testing.";
 			let encryptedMetadata = "0x";
 
 			it("should burn properly", async () => {
@@ -600,7 +600,7 @@ describe("EncryptedERC - Standalone", () => {
 				validProof = proof;
 			});
 
-			it("should support sending encrypted metadata with burn", async function() {
+			it("should support sending encrypted metadata with burn", async () => {
 
 				const user = users[1];
 				const balance = await encryptedERC.balanceOfStandalone(
@@ -1138,8 +1138,7 @@ describe("EncryptedERC - Standalone", () => {
 				console.log("Sender transfers", transferAmount, "to receiver");
 			});
 
-			it("should support sending encrypted metadata with transfer", async function() {
-
+			it("should support sending encrypted metadata with transfer", async () => {
 				const sender = users[1];
 				const receiver = users[4];
 
