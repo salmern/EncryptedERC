@@ -26,15 +26,6 @@ import {BabyJubJub} from "./libraries/BabyJubJub.sol";
  */
 contract Registrar {
     ///////////////////////////////////////////////////
-    ///                   Constants                 ///
-    ///////////////////////////////////////////////////
-
-    /// @notice Special address used for burning tokens
-    /// @dev This address is pre-registered with the identity point (0,1) as its public key
-    address public constant BURN_USER =
-        0x1111111111111111111111111111111111111111;
-
-    ///////////////////////////////////////////////////
     ///                   State Variables           ///
     ///////////////////////////////////////////////////
 
@@ -68,8 +59,6 @@ contract Registrar {
      */
     constructor(address registrationVerifier_) {
         registrationVerifier = IRegistrationVerifier(registrationVerifier_);
-        // setting burn user to the identity point (0, 1)
-        userPublicKeys[BURN_USER] = Point({x: 0, y: 1});
     }
 
     ///////////////////////////////////////////////////
@@ -124,15 +113,6 @@ contract Registrar {
         _verifyProof(proof);
 
         _register(account, Point({x: input[0], y: input[1]}), registrationHash);
-    }
-
-    /**
-     * @notice Returns the address of the burn user
-     * @return The address of the burn user
-     * @dev The burn user is a special address used for burning tokens
-     */
-    function burnUser() external pure returns (address) {
-        return BURN_USER;
     }
 
     /**
