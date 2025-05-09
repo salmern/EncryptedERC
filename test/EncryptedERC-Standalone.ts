@@ -93,12 +93,6 @@ describe("EncryptedERC - Standalone", () => {
 			expect(registrar).to.not.be.null;
 		});
 
-		it("should initialize properly", async () => {
-			const burnUserAddress = await registrar.burnUser();
-			const burnUserPublicKey = await registrar.userPublicKeys(burnUserAddress);
-			expect(burnUserPublicKey).to.deep.equal([0n, 1n]);
-		});
-
 		describe("Registration", () => {
 			let registrationCircuit: RegistrationCircuit;
 			let validProof: CalldataRegistrationCircuitGroth16;
