@@ -18,11 +18,9 @@ import {BabyJubJub} from "./libraries/BabyJubJub.sol";
  * @dev This contract handles:
  *      1. User registration with public keys
  *      2. Verification of registration proofs
- *      3. Management of the burn user address
  *
  * The Registrar is a critical component that:
  * - Associates Ethereum addresses with public keys for encrypted operations
- * - Provides a special burn address for token burning operations
  */
 contract Registrar {
     ///////////////////////////////////////////////////
@@ -55,7 +53,6 @@ contract Registrar {
     /**
      * @notice Initializes the Registrar contract
      * @param registrationVerifier_ Address of the registration verifier contract
-     * @dev Sets up the registration verifier and pre-registers the burn user
      */
     constructor(address registrationVerifier_) {
         registrationVerifier = IRegistrationVerifier(registrationVerifier_);
