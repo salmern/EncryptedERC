@@ -81,3 +81,10 @@ struct WithdrawProof {
     ProofPoints proofPoints;
     uint256[16] publicSignals;
 }
+
+struct TransferInputs {
+    EGCT providedBalance;
+    EGCT senderEncryptedAmount;
+    EGCT receiverEncryptedAmount;
+    uint256[7] amountPCT;
+}

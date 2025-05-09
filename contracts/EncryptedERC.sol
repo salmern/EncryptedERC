@@ -14,7 +14,7 @@ import {BabyJubJub} from "./libraries/BabyJubJub.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 // types
-import {CreateEncryptedERCParams, Point, EGCT, EncryptedBalance, AmountPCT, MintProof, TransferProof, WithdrawProof, BurnProof} from "./types/Types.sol";
+import {CreateEncryptedERCParams, Point, EGCT, EncryptedBalance, AmountPCT, MintProof, TransferProof, WithdrawProof, BurnProof, TransferInputs} from "./types/Types.sol";
 
 // errors
 import {UserNotRegistered, InvalidProof, TransferFailed, UnknownToken, InvalidChainId, InvalidNullifier, ZeroAddress} from "./errors/Errors.sol";
@@ -287,8 +287,25 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
             revert InvalidProof();
         }
 
-        // Perform the private mint operation
-        _privateMint(user, mintNullifier, publicInputs);
+        {
+            // Extract the encrypted amount from the proof
+            EGCT memory encryptedAmount = EGCT({
+                c1: Point({x: publicInputs[4], y: publicInputs[5]}),
+                c2: Point({x: publicInputs[6], y: publicInputs[7]})
+            });
+
+            // Extract amount PCT
+            uint256[7] memory amountPCT;
+            for (uint256 i = 0; i < 7; i++) {
+                amountPCT[i] = publicInputs[8 + i];
+            }
+
+            // Perform the private mint operation
+            _privateMint(user, encryptedAmount, amountPCT);
+        }
+
+        // mark the mint nullifier as used
+        alreadyMinted[mintNullifier] = true;
 
         uint256[7] memory auditorPCT;
         for (uint256 i = 0; i < auditorPCT.length; i++) {
@@ -399,10 +416,9 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
         onlyIfUserRegistered(to)
     {
         uint256[32] memory publicInputs = proof.publicSignals;
-        address from = msg.sender;
 
         // validate user's public key
-        _validatePublicKey(from, [publicInputs[0], publicInputs[1]]);
+        _validatePublicKey(msg.sender, [publicInputs[0], publicInputs[1]]);
         _validatePublicKey(to, [publicInputs[10], publicInputs[11]]);
 
         _validateAuditorPublicKey([publicInputs[23], publicInputs[24]]);
@@ -418,8 +434,22 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
             revert InvalidProof();
         }
 
+        // Extract the inputs for the transfer operation
+        TransferInputs memory transferInputs = _extractTransferInputs(
+            publicInputs
+        );
+
         // Perform the transfer
-        _transfer(from, to, tokenId, publicInputs, balancePCT);
+        _transfer({
+            from: msg.sender,
+            to: to,
+            tokenId: tokenId,
+            providedBalance: transferInputs.providedBalance,
+            senderEncryptedAmount: transferInputs.senderEncryptedAmount,
+            receiverEncryptedAmount: transferInputs.receiverEncryptedAmount,
+            balancePCT: balancePCT,
+            amountPCT: transferInputs.amountPCT
+        });
 
         // Extract auditor PCT and emit event
         {
@@ -428,7 +458,7 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
                 auditorPCT[i] = publicInputs[25 + i];
             }
 
-            emit PrivateTransfer(from, to, auditorPCT, auditor);
+            emit PrivateTransfer(msg.sender, to, auditorPCT, auditor);
         }
     }
 
@@ -760,44 +790,31 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
     /**
      * @notice Performs the internal logic for a private mint
      * @param user Address of the user to mint tokens to
-     * @param mintNullifier The mint nullifier to prevent double-minting
-     * @param input Public inputs from the proof
+     * @param encryptedAmount The encrypted amount to mint
+     * @param amountPCT The amount PCT for the mint
      * @dev This function:
-     *      1. Extracts the encrypted amount from the proof
-     *      2. Adds the encrypted amount to the user's balance
-     *      3. Marks the mint nullifier as used
-     *      4. Emits a PrivateMint event
+     *      1. Adds the encrypted amount to the user's balance
+     *      2. Emits a PrivateMint event
      */
     function _privateMint(
         address user,
-        uint256 mintNullifier,
-        uint256[24] memory input
+        EGCT memory encryptedAmount,
+        uint256[7] memory amountPCT
     ) internal {
-        // Extract the encrypted amount from the proof
-        EGCT memory eGCT = EGCT({
-            c1: Point({x: input[4], y: input[5]}),
-            c2: Point({x: input[6], y: input[7]})
-        });
-
-        // Extract amount PCT and auditor PCT
-        uint256[7] memory amountPCT;
-        for (uint256 i = 0; i < 7; i++) {
-            amountPCT[i] = input[8 + i];
-        }
-
         // since private mint is only for the standalone ERC, tokenId is always 0
-        _addToUserBalance(user, 0, eGCT, amountPCT);
-
-        alreadyMinted[mintNullifier] = true;
+        _addToUserBalance(user, 0, encryptedAmount, amountPCT);
     }
 
     /**
      * @notice Performs the internal logic for a private transfer
-     * @param from Address of the sender
-     * @param to Address of the receiver
-     * @param tokenId ID of the token to transfer
-     * @param input Public inputs from the proof
-     * @param balancePCT The balance PCT for the sender after the transfer
+     * @param from address The address of the sender
+     * @param to address The address of the receiver
+     * @param tokenId uint256 The ID of the token to transfer
+     * @param providedBalance EGCT The provided balance from the proof
+     * @param senderEncryptedAmount EGCT The encrypted amount to subtract from the sender's balance
+     * @param receiverEncryptedAmount EGCT The encrypted amount to add to the receiver's balance
+     * @param balancePCT uint256[7] The balance PCT for the sender after the transfer
+     * @param amountPCT uint256[7] The amount PCT for the transfer
      * @dev This function:
      *      1. Verifies the sender's balance is valid
      *      2. Subtracts the encrypted amount from the sender's balance
@@ -807,55 +824,26 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
         address from,
         address to,
         uint256 tokenId,
-        uint256[32] memory input,
-        uint256[7] calldata balancePCT
+        EGCT memory providedBalance,
+        EGCT memory senderEncryptedAmount,
+        EGCT memory receiverEncryptedAmount,
+        uint256[7] memory balancePCT,
+        uint256[7] memory amountPCT
     ) internal {
-        // Process the sender's balance
         {
-            // Extract the provided balance from the proof
-            EGCT memory providedBalance = EGCT({
-                c1: Point({x: input[2], y: input[3]}),
-                c2: Point({x: input[4], y: input[5]})
-            });
-
-            uint256 transactionIndex = _verifyUserBalance(
+            // 1. for sender operation is very similar to the private burn
+            _privateBurn(
                 from,
                 tokenId,
-                providedBalance
-            );
-
-            // Extract the encrypted amount to subtract
-            EGCT memory fromEncryptedAmount = EGCT({
-                c1: Point({x: input[6], y: input[7]}),
-                c2: Point({x: input[8], y: input[9]})
-            });
-
-            // Subtract from the sender's balance
-            _subtractFromUserBalance(
-                from,
-                tokenId,
-                fromEncryptedAmount,
-                balancePCT,
-                transactionIndex
+                providedBalance,
+                senderEncryptedAmount,
+                balancePCT
             );
         }
 
-        // Process the receiver's balance
         {
-            // Extract the encrypted amount to add
-            EGCT memory toEncryptedAmount = EGCT({
-                c1: Point({x: input[12], y: input[13]}),
-                c2: Point({x: input[14], y: input[15]})
-            });
-
-            // Extract amount PCT
-            uint256[7] memory amountPCT;
-            for (uint256 i = 0; i < 7; i++) {
-                amountPCT[i] = input[16 + i];
-            }
-
-            // Add to the receiver's balance
-            _addToUserBalance(to, tokenId, toEncryptedAmount, amountPCT);
+            // 2. for receiver operation is very similar to the private mint
+            _addToUserBalance(to, tokenId, receiverEncryptedAmount, amountPCT);
         }
     }
 
@@ -928,6 +916,38 @@ contract EncryptedERC is TokenTracker, EncryptedUserBalances, AuditorManager {
             auditorPublicKey.y != providedPublicKey[1]
         ) {
             revert InvalidProof();
+        }
+    }
+
+    /**
+     * @notice Extracts the inputs for a transfer operation
+     * @param input The input array containing the transfer data
+     * @return transferInputs TransferInputs struct containing:
+     *         - providedBalance (EGCT): The provided balance from the proof
+     *         - senderEncryptedAmount (EGCT): The encrypted amount to subtract from sender
+     *         - receiverEncryptedAmount (EGCT): The encrypted amount to add to receiver
+     *         - amountPCT (uint256[7]): The amount PCT for the transfer
+     */
+    function _extractTransferInputs(
+        uint256[32] memory input
+    ) internal pure returns (TransferInputs memory transferInputs) {
+        transferInputs.providedBalance = EGCT({
+            c1: Point({x: input[2], y: input[3]}),
+            c2: Point({x: input[4], y: input[5]})
+        });
+
+        transferInputs.senderEncryptedAmount = EGCT({
+            c1: Point({x: input[6], y: input[7]}),
+            c2: Point({x: input[8], y: input[9]})
+        });
+
+        transferInputs.receiverEncryptedAmount = EGCT({
+            c1: Point({x: input[12], y: input[13]}),
+            c2: Point({x: input[14], y: input[15]})
+        });
+
+        for (uint256 i = 0; i < 7; i++) {
+            transferInputs.amountPCT[i] = input[16 + i];
         }
     }
 }
