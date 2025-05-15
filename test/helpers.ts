@@ -22,6 +22,7 @@ import {
 	RegistrationVerifier__factory,
 	TransferVerifier__factory,
 	WithdrawVerifier__factory,
+	BurnVerifier__factory,
 } from "../typechain-types/factories/contracts/prod";
 import {
 	BurnCircuitGroth16Verifier__factory,
@@ -64,13 +65,16 @@ export const deployVerifiers = async (
 		const transferVerifier = await transferVerifierFactory.deploy();
 		await transferVerifier.waitForDeployment();
 
+		const burnVerifierFactory = new BurnVerifier__factory(signer);
+		const burnVerifier = await burnVerifierFactory.deploy();
+		await burnVerifier.waitForDeployment();
+
 		return {
 			registrationVerifier: registrationVerifier.target.toString(),
 			mintVerifier: mintVerifier.target.toString(),
 			withdrawVerifier: withdrawVerifier.target.toString(),
 			transferVerifier: transferVerifier.target.toString(),
-			// mock for now
-			burnVerifier: "0x",
+			burnVerifier: burnVerifier.target.toString(),
 		};
 	}
 
