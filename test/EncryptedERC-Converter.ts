@@ -5,13 +5,18 @@ import type {
 	CalldataWithdrawCircuitGroth16,
 	RegistrationCircuit,
 } from "../generated-types/zkit";
-import { processPoseidonEncryption } from "../src";
+import {
+	decryptMetadata,
+	encryptMetadata,
+	processPoseidonEncryption,
+} from "../src";
 import {
 	type FeeERC20,
 	FeeERC20__factory,
 	type SimpleERC20,
 	SimpleERC20__factory,
 } from "../typechain-types";
+import { erc20 } from "../typechain-types/@openzeppelin/contracts/token";
 import type {
 	BurnProofStruct,
 	EncryptedERC,
@@ -385,6 +390,61 @@ describe("EncryptedERC - Converter", () => {
 				}
 			});
 
+			it("should deposit tokens to EncryptedERC with encrypted metadata", async () => {
+				const MESSAGE = "DEPOSIT transaction metadata testing.";
+				const sender = users[0];
+				const messageFor = users[1];
+				const c = {
+					convertedAmount: 1_005_000_000_000_000_000_000n,
+					dust: 0n,
+					encryptedValue: 10_050_000_000_000n,
+				};
+				const erc20 = erc20s[1];
+
+				await erc20
+					.connect(owner)
+					.approve(encryptedERC.target, c.convertedAmount);
+
+				const { ciphertext, nonce, authKey } = processPoseidonEncryption(
+					[c.encryptedValue],
+					sender.publicKey,
+				);
+
+				const encryptedMetadata = encryptMetadata(
+					messageFor.publicKey,
+					MESSAGE,
+				);
+
+				const tx = await encryptedERC
+					.connect(owner)
+					["deposit(uint256,address,uint256[7],bytes)"](
+						c.convertedAmount,
+						erc20.target,
+						[...ciphertext, ...authKey, nonce],
+						encryptedMetadata,
+					);
+				await tx.wait();
+
+				// receiver should be able to decrypt the metadata
+				const events = await encryptedERC.queryFilter(
+					encryptedERC.filters.PrivateMessage,
+					tx.blockNumber || 0,
+					tx.blockNumber || 0,
+				);
+
+				const emittedMetadata = events[0].args.metadata;
+				expect(emittedMetadata).to.not.be.equal("0x");
+				const messageType = emittedMetadata.messageType;
+				expect(messageType).to.equal("DEPOSIT");
+
+				const encryptedMsgBytes = emittedMetadata.encryptedMsg;
+				const decryptedMetadata = decryptMetadata(
+					messageFor.privateKey,
+					encryptedMsgBytes || "",
+				);
+				expect(decryptedMetadata).to.equal(MESSAGE);
+			});
+
 			it("should revert if amount approved is different from the amount deposited", async () => {
 				const ownerUser = users[0];
 				const depositAmount = 1_000_000_000n;
@@ -755,7 +815,8 @@ describe("EncryptedERC - Converter", () => {
 				userInitialBalance = totalBalance;
 			});
 
-			it("should withdraw token properly", async () => {
+			it("should withdraw token properly with metadata", async () => {
+				const MESSAGE = "WITHDRAW transaction metadata testing.";
 				const user = users[0];
 				const balance = await encryptedERC.balanceOf(
 					user.signer.address,
@@ -771,13 +832,32 @@ describe("EncryptedERC - Converter", () => {
 					auditorPublicKey,
 				);
 
-				expect(
-					await encryptedERC
-						.connect(user.signer)
-						[
-							"withdraw(uint256,((uint256[2],uint256[2][2],uint256[2]),uint256[16]),uint256[7])"
-						](tokenId, proof, userBalancePCT),
-				).to.be.not.reverted;
+				const encryptedMetadata = encryptMetadata(user.publicKey, MESSAGE);
+
+				const tx = await encryptedERC
+					.connect(user.signer)
+					[
+						"withdraw(uint256,((uint256[2],uint256[2][2],uint256[2]),uint256[16]),uint256[7],bytes)"
+					](tokenId, proof, userBalancePCT, encryptedMetadata);
+				const receipt = await tx.wait();
+
+				const events = await encryptedERC.queryFilter(
+					encryptedERC.filters.PrivateMessage,
+					receipt?.blockNumber || 0,
+					receipt?.blockNumber || 0,
+				);
+
+				const emittedMetadata = events[0].args.metadata;
+				expect(emittedMetadata).to.not.be.equal("0x");
+				const messageType = emittedMetadata.messageType;
+				expect(messageType).to.equal("WITHDRAW");
+
+				const encryptedMsgBytes = emittedMetadata.encryptedMsg;
+				const decryptedMetadata = decryptMetadata(
+					user.privateKey,
+					encryptedMsgBytes || "",
+				);
+				expect(decryptedMetadata).to.equal(MESSAGE);
 
 				validProof = { proof, userBalancePCT };
 			});
@@ -1063,8 +1143,6 @@ describe("EncryptedERC - Converter", () => {
 					senderEncryptedBalance,
 					auditorPublicKey,
 				);
-
-				console.log(auditorPublicKey);
 
 				expect(
 					await encryptedERC
