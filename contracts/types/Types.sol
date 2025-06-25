@@ -88,3 +88,10 @@ struct TransferInputs {
     EGCT receiverEncryptedAmount;
     uint256[7] amountPCT;
 }
+
+struct Metadata {
+    address messageFrom;
+    address messageTo;
+    string messageType;
+    bytes encryptedMsg;
+}

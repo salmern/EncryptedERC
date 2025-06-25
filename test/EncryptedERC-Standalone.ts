@@ -7,6 +7,7 @@ import type {
 	CalldataRegistrationCircuitGroth16,
 	RegistrationCircuit,
 } from "../generated-types/zkit";
+import { decryptMetadata, encryptMetadata } from "../src";
 import { BN254_SCALAR_FIELD } from "../src/constants";
 import { decryptPoint } from "../src/jub/jub";
 import type {
@@ -279,12 +280,16 @@ describe("EncryptedERC - Standalone", () => {
 				};
 
 				await expect(
-					encryptedERC.connect(users[0].signer).transfer(
-						users[0].signer.address,
-						0n,
-						mockTransferProof as TransferProofStruct,
-						Array.from({ length: 7 }, () => 1n),
-					),
+					encryptedERC
+						.connect(users[0].signer)
+						[
+							"transfer(address,uint256,((uint256[2],uint256[2][2],uint256[2]),uint256[32]),uint256[7])"
+						](
+							users[0].signer.address,
+							0n,
+							mockTransferProof as TransferProofStruct,
+							Array.from({ length: 7 }, () => 1n),
+						),
 				).to.be.reverted;
 			});
 
@@ -331,11 +336,13 @@ describe("EncryptedERC - Standalone", () => {
 			// must write here for pass the AuditorKeyNotSet error
 			it("should revert if user try to deposit", async () => {
 				await expect(
-					encryptedERC.connect(users[0].signer).deposit(
-						1n,
-						users[0].signer.address,
-						Array.from({ length: 7 }, () => 1n),
-					),
+					encryptedERC
+						.connect(users[0].signer)
+						["deposit(uint256,address,uint256[7])"](
+							1n,
+							users[0].signer.address,
+							Array.from({ length: 7 }, () => 1n),
+						),
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidOperation");
 			});
 		});
@@ -366,10 +373,14 @@ describe("EncryptedERC - Standalone", () => {
 					auditorPublicKey,
 				);
 
-				await encryptedERC.connect(owner).privateMint(receiver.signer.address, {
-					proofPoints: calldata.proofPoints,
-					publicSignals: calldata.publicSignals,
-				});
+				await encryptedERC
+					.connect(owner)
+					[
+						"privateMint(address,((uint256[2],uint256[2][2],uint256[2]),uint256[24]))"
+					](receiver.signer.address, {
+						proofPoints: calldata.proofPoints,
+						publicSignals: calldata.publicSignals,
+					});
 
 				validProof = calldata;
 			});
@@ -378,7 +389,9 @@ describe("EncryptedERC - Standalone", () => {
 				await expect(
 					encryptedERC
 						.connect(users[0].signer)
-						.privateMint(users[0].signer.address, validProof),
+						[
+							"privateMint(address,((uint256[2],uint256[2][2],uint256[2]),uint256[24]))"
+						](users[0].signer.address, validProof),
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidProof");
 			});
 
@@ -406,11 +419,86 @@ describe("EncryptedERC - Standalone", () => {
 				await expect(
 					encryptedERC
 						.connect(nonOwner.signer)
-						.privateMint(nonOwner.signer.address, {
+						[
+							"privateMint(address,((uint256[2],uint256[2][2],uint256[2]),uint256[24]))"
+						](nonOwner.signer.address, {
 							proofPoints: mockMintProof.proofPoints,
 							publicSignals: mockMintProof.publicSignals,
 						} as MintProofStruct),
 				).to.be.reverted;
+			});
+
+			it("should support sending encrypted metadata with mint", async () => {
+				const receiver = users[1];
+				const metadataMessage = "Mint transaction metadata testing.";
+
+				const encryptedMetadata = encryptMetadata(
+					receiver.publicKey,
+					metadataMessage,
+				);
+				const calldata = await privateMint(
+					mintAmount,
+					receiver.publicKey,
+					auditorPublicKey,
+				);
+
+				const getBalanceBefore = await encryptedERC.balanceOfStandalone(
+					receiver.signer.address,
+				);
+				const getBalanceBeforeDecrypted = await getDecryptedBalance(
+					receiver.privateKey,
+					getBalanceBefore.amountPCTs,
+					getBalanceBefore.balancePCT,
+					getBalanceBefore.eGCT,
+				);
+
+				const tx = await encryptedERC
+					.connect(owner)
+					[
+						"privateMint(address,((uint256[2],uint256[2][2],uint256[2]),uint256[24]),bytes)"
+					](
+						receiver.signer.address,
+						{
+							proofPoints: calldata.proofPoints,
+							publicSignals: calldata.publicSignals,
+						},
+						encryptedMetadata,
+					);
+
+				const receipt = await tx.wait();
+
+				const balanceAfter = await encryptedERC.balanceOfStandalone(
+					receiver.signer.address,
+				);
+				const balanceAfterDecrypted = await getDecryptedBalance(
+					receiver.privateKey,
+					balanceAfter.amountPCTs,
+					balanceAfter.balancePCT,
+					balanceAfter.eGCT,
+				);
+
+				expect(balanceAfterDecrypted).to.equal(
+					getBalanceBeforeDecrypted + mintAmount,
+				);
+
+				const events = await encryptedERC.queryFilter(
+					encryptedERC.filters.PrivateMessage,
+					receipt?.blockNumber || 0,
+					receipt?.blockNumber || 0,
+				);
+
+				const emittedMetadata = events[0].args.metadata;
+				expect(emittedMetadata).to.not.be.equal("0x");
+				const messageType = emittedMetadata.messageType;
+				expect(messageType).to.equal("PRIVATE_MINT");
+
+				const encryptedMsgBytes = emittedMetadata.encryptedMsg;
+
+				const decryptedMetadata = decryptMetadata(
+					receiver.privateKey,
+					encryptedMsgBytes || "",
+				);
+				expect(decryptedMetadata).to.equal(metadataMessage);
 			});
 
 			it("if receiver user is not registered, mint should revert", async () => {
@@ -425,7 +513,9 @@ describe("EncryptedERC - Standalone", () => {
 				await expect(
 					encryptedERC
 						.connect(owner)
-						.privateMint(nonRegisteredUser.signer.address, {
+						[
+							"privateMint(address,((uint256[2],uint256[2][2],uint256[2]),uint256[24]))"
+						](nonRegisteredUser.signer.address, {
 							proofPoints: mockMintProof.proofPoints,
 							publicSignals: input,
 						} as MintProofStruct),
@@ -436,10 +526,14 @@ describe("EncryptedERC - Standalone", () => {
 				const user = users[0];
 
 				await expect(
-					encryptedERC.connect(owner).privateMint(user.signer.address, {
-						proofPoints: mockMintProof.proofPoints,
-						publicSignals: mockMintProof.publicSignals,
-					} as MintProofStruct),
+					encryptedERC
+						.connect(owner)
+						[
+							"privateMint(address,((uint256[2],uint256[2][2],uint256[2]),uint256[24]))"
+						](user.signer.address, {
+							proofPoints: mockMintProof.proofPoints,
+							publicSignals: mockMintProof.publicSignals,
+						} as MintProofStruct),
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidChainId");
 			});
 
@@ -447,10 +541,14 @@ describe("EncryptedERC - Standalone", () => {
 				const user = users[0];
 
 				await expect(
-					encryptedERC.connect(owner).privateMint(user.signer.address, {
-						proofPoints: validProof.proofPoints,
-						publicSignals: validProof.publicSignals,
-					} as MintProofStruct),
+					encryptedERC
+						.connect(owner)
+						[
+							"privateMint(address,((uint256[2],uint256[2][2],uint256[2]),uint256[24]))"
+						](user.signer.address, {
+							proofPoints: validProof.proofPoints,
+							publicSignals: validProof.publicSignals,
+						} as MintProofStruct),
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidProof");
 			});
 
@@ -462,10 +560,14 @@ describe("EncryptedERC - Standalone", () => {
 				inputs[1] = String(BN254_SCALAR_FIELD + 1n);
 
 				await expect(
-					encryptedERC.connect(owner).privateMint(user.signer.address, {
-						proofPoints: validProof.proofPoints,
-						publicSignals: inputs,
-					}),
+					encryptedERC
+						.connect(owner)
+						[
+							"privateMint(address,((uint256[2],uint256[2][2],uint256[2]),uint256[24]))"
+						](user.signer.address, {
+							proofPoints: validProof.proofPoints,
+							publicSignals: inputs,
+						}),
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidNullifier");
 			});
 
@@ -473,10 +575,14 @@ describe("EncryptedERC - Standalone", () => {
 				const notUser0 = users[4];
 
 				await expect(
-					encryptedERC.connect(owner).privateMint(notUser0.signer.address, {
-						proofPoints: validProof.proofPoints,
-						publicSignals: validProof.publicSignals,
-					}),
+					encryptedERC
+						.connect(owner)
+						[
+							"privateMint(address,((uint256[2],uint256[2][2],uint256[2]),uint256[24]))"
+						](notUser0.signer.address, {
+							proofPoints: validProof.proofPoints,
+							publicSignals: validProof.publicSignals,
+						}),
 				).to.be.reverted;
 			});
 
@@ -491,10 +597,14 @@ describe("EncryptedERC - Standalone", () => {
 				// _publicInputs[16] = validProof.publicSignals[14];
 
 				await expect(
-					encryptedERC.connect(owner).privateMint(receiver.signer.address, {
-						proofPoints: validProof.proofPoints,
-						publicSignals: _publicInputs,
-					}),
+					encryptedERC
+						.connect(owner)
+						[
+							"privateMint(address,((uint256[2],uint256[2][2],uint256[2]),uint256[24]))"
+						](receiver.signer.address, {
+							proofPoints: validProof.proofPoints,
+							publicSignals: _publicInputs,
+						}),
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidProof");
 
 				// only change [16]
@@ -502,10 +612,14 @@ describe("EncryptedERC - Standalone", () => {
 				_publicInputs[16] = "100";
 
 				await expect(
-					encryptedERC.connect(owner).privateMint(receiver.signer.address, {
-						proofPoints: validProof.proofPoints,
-						publicSignals: _publicInputs,
-					}),
+					encryptedERC
+						.connect(owner)
+						[
+							"privateMint(address,((uint256[2],uint256[2][2],uint256[2]),uint256[24]))"
+						](receiver.signer.address, {
+							proofPoints: validProof.proofPoints,
+							publicSignals: _publicInputs,
+						}),
 				).to.be.revertedWithCustomError(encryptedERC, "InvalidProof");
 			});
 		});
@@ -514,8 +628,11 @@ describe("EncryptedERC - Standalone", () => {
 			const burnAmount = 100n;
 			let userBalance = 0n;
 			let validProof: TransferProofStruct;
+			let encryptedMetadata = "0x";
 
 			it("should burn properly", async () => {
+				const MESSAGE = "Burn transaction testing.";
+
 				const user = users[1];
 				const balance = await encryptedERC.balanceOfStandalone(
 					user.signer.address,
@@ -539,16 +656,43 @@ describe("EncryptedERC - Standalone", () => {
 					auditorPublicKey,
 				);
 
-				const tx = await encryptedERC.connect(user.signer).privateBurn(
-					{
-						proofPoints: proof.proofPoints,
-						publicSignals: proof.publicSignals,
-					},
-					userBalancePCT,
-				);
+				encryptedMetadata = encryptMetadata(user.publicKey, MESSAGE);
+
+				const tx = await encryptedERC
+					.connect(user.signer)
+					[
+						"privateBurn(address,((uint256[2],uint256[2][2],uint256[2]),uint256[19]),uint256[7],bytes)"
+					](
+						user.signer.address,
+						{
+							proofPoints: proof.proofPoints,
+							publicSignals: proof.publicSignals,
+						},
+						userBalancePCT,
+						encryptedMetadata,
+					);
 				await tx.wait();
 
 				validProof = proof;
+
+				const events = await encryptedERC.queryFilter(
+					encryptedERC.filters.PrivateMessage,
+					tx.blockNumber || 0,
+					tx.blockNumber || 0,
+				);
+
+				const emittedMetadata = events[0].args.metadata;
+				expect(emittedMetadata).to.not.be.equal("0x");
+				const messageType = emittedMetadata.messageType;
+				expect(messageType).to.equal("PRIVATE_BURN");
+
+				const encryptedMsgBytes = emittedMetadata.encryptedMsg;
+
+				const decryptedMetadata = decryptMetadata(
+					user.privateKey,
+					encryptedMsgBytes || "",
+				);
+				expect(decryptedMetadata).to.equal(MESSAGE);
 			});
 
 			it("users balance pct and elgamal ciphertext should be updated properly", async () => {
@@ -571,10 +715,14 @@ describe("EncryptedERC - Standalone", () => {
 				const user = users[0];
 
 				await expect(
-					encryptedERC.connect(user.signer).privateBurn(
-						validProof,
-						Array.from({ length: 7 }, () => 1n),
-					),
+					encryptedERC
+						.connect(user.signer)
+						[
+							"privateBurn(((uint256[2],uint256[2][2],uint256[2]),uint256[19]),uint256[7])"
+						](
+							validProof,
+							Array.from({ length: 7 }, () => 1n),
+						),
 				).to.be.reverted;
 			});
 
@@ -582,10 +730,14 @@ describe("EncryptedERC - Standalone", () => {
 				const nonRegisteredUser = users[5];
 
 				await expect(
-					encryptedERC.connect(nonRegisteredUser.signer).privateBurn(
-						validProof,
-						Array.from({ length: 7 }, () => 1n),
-					),
+					encryptedERC
+						.connect(nonRegisteredUser.signer)
+						[
+							"privateBurn(((uint256[2],uint256[2][2],uint256[2]),uint256[19]),uint256[7])"
+						](
+							validProof,
+							Array.from({ length: 7 }, () => 1n),
+						),
 				).to.be.reverted;
 			});
 
@@ -593,10 +745,14 @@ describe("EncryptedERC - Standalone", () => {
 				const notUser0 = users[4];
 
 				await expect(
-					encryptedERC.connect(notUser0.signer).privateBurn(
-						validProof,
-						Array.from({ length: 7 }, () => 1n),
-					),
+					encryptedERC
+						.connect(notUser0.signer)
+						[
+							"privateBurn(((uint256[2],uint256[2][2],uint256[2]),uint256[19]),uint256[7])"
+						](
+							validProof,
+							Array.from({ length: 7 }, () => 1n),
+						),
 				).to.be.reverted;
 			});
 
@@ -611,13 +767,17 @@ describe("EncryptedERC - Standalone", () => {
 				_publicInputs[11] = validProof.publicSignals[11];
 
 				await expect(
-					encryptedERC.connect(user.signer).privateBurn(
-						{
-							proofPoints: validProof.proofPoints,
-							publicSignals: _publicInputs,
-						} as TransferProofStruct,
-						Array.from({ length: 7 }, () => 1n),
-					),
+					encryptedERC
+						.connect(user.signer)
+						[
+							"privateBurn(((uint256[2],uint256[2][2],uint256[2]),uint256[19]),uint256[7])"
+						](
+							{
+								proofPoints: validProof.proofPoints,
+								publicSignals: _publicInputs,
+							} as TransferProofStruct,
+							Array.from({ length: 7 }, () => 1n),
+						),
 				).to.be.reverted;
 
 				// only change [11]
@@ -625,13 +785,17 @@ describe("EncryptedERC - Standalone", () => {
 				_publicInputs[11] = "100";
 
 				await expect(
-					encryptedERC.connect(user.signer).privateBurn(
-						{
-							proofPoints: validProof.proofPoints,
-							publicSignals: _publicInputs,
-						} as TransferProofStruct,
-						Array.from({ length: 7 }, () => 1n),
-					),
+					encryptedERC
+						.connect(user.signer)
+						[
+							"privateBurn(((uint256[2],uint256[2][2],uint256[2]),uint256[19]),uint256[7])"
+						](
+							{
+								proofPoints: validProof.proofPoints,
+								publicSignals: _publicInputs,
+							} as TransferProofStruct,
+							Array.from({ length: 7 }, () => 1n),
+						),
 				).to.be.reverted;
 			});
 		});
@@ -675,7 +839,9 @@ describe("EncryptedERC - Standalone", () => {
 
 					await encryptedERC
 						.connect(owner)
-						.privateMint(USER.signer.address, proof);
+						[
+							"privateMint(address,((uint256[2],uint256[2][2],uint256[2]),uint256[24]))"
+						](USER.signer.address, proof);
 				}
 			});
 
@@ -741,7 +907,9 @@ describe("EncryptedERC - Standalone", () => {
 
 					await encryptedERC
 						.connect(owner)
-						.privateMint(USER.signer.address, proof);
+						[
+							"privateMint(address,((uint256[2],uint256[2][2],uint256[2]),uint256[24]))"
+						](USER.signer.address, proof);
 				}
 			});
 
@@ -781,7 +949,9 @@ describe("EncryptedERC - Standalone", () => {
 			it("3. USER. sends his burn proof", async () => {
 				await encryptedERC
 					.connect(USER.signer)
-					.privateBurn(burnProof.proof, burnProof.senderBalancePCT);
+					[
+						"privateBurn(((uint256[2],uint256[2][2],uint256[2]),uint256[19]),uint256[7])"
+					](burnProof.proof, burnProof.senderBalancePCT);
 
 				console.log("USER. balance before burn", userBalance);
 				userBalance = userBalance - burnAmount;
@@ -846,7 +1016,9 @@ describe("EncryptedERC - Standalone", () => {
 
 				await encryptedERC
 					.connect(USER.signer)
-					.privateBurn(proof, senderBalancePCT);
+					[
+						"privateBurn(((uint256[2],uint256[2][2],uint256[2]),uint256[19]),uint256[7])"
+					](proof, senderBalancePCT);
 
 				console.log("USER. balance before burn", userBalance);
 				userBalance = userBalance - burnAmount;
@@ -909,7 +1081,9 @@ describe("EncryptedERC - Standalone", () => {
 
 				await encryptedERC
 					.connect(USER.signer)
-					.privateBurn(proof, senderBalancePCT);
+					[
+						"privateBurn(((uint256[2],uint256[2][2],uint256[2]),uint256[19]),uint256[7])"
+					](proof, senderBalancePCT);
 
 				console.log("USER. balance before burn", userBalance);
 				userBalance = userBalance - burnAmount;
@@ -957,6 +1131,8 @@ describe("EncryptedERC - Standalone", () => {
 		});
 
 		describe("Private Transfer", () => {
+			const MESSAGE = "Transfer transaction testing.";
+			let encryptedMetadata = "0x";
 			let senderBalance = 0n;
 			const transferAmount = 500n;
 			let validParams: {
@@ -1013,11 +1189,21 @@ describe("EncryptedERC - Standalone", () => {
 					auditorPublicKey,
 				);
 
-				expect(
-					await encryptedERC
-						.connect(sender.signer)
-						.transfer(receiver.signer.address, 0n, proof, senderBalancePCT),
-				).to.be.not.reverted;
+				encryptedMetadata = encryptMetadata(receiver.publicKey, MESSAGE);
+
+				const tx = await encryptedERC
+					.connect(sender.signer)
+					[
+						"transfer(address,uint256,((uint256[2],uint256[2][2],uint256[2]),uint256[32]),uint256[7],bytes)"
+					](
+						receiver.signer.address,
+						0n,
+						proof,
+						senderBalancePCT,
+						encryptedMetadata,
+					);
+
+				await tx.wait();
 
 				validParams = {
 					proof,
@@ -1025,7 +1211,24 @@ describe("EncryptedERC - Standalone", () => {
 					to: receiver.signer.address,
 				};
 
-				console.log("Sender transfers", transferAmount, "to receiver");
+				const events = await encryptedERC.queryFilter(
+					encryptedERC.filters.PrivateMessage,
+					tx.blockNumber || 0,
+					tx.blockNumber || 0,
+				);
+
+				const emittedMetadata = events[0].args.metadata;
+				expect(emittedMetadata).to.not.be.equal("0x");
+				const messageType = emittedMetadata.messageType;
+				expect(messageType).to.equal("PRIVATE_TRANSFER");
+
+				const encryptedMsgBytes = emittedMetadata.encryptedMsg;
+
+				const decryptedMetadata = decryptMetadata(
+					receiver.privateKey,
+					encryptedMsgBytes || "",
+				);
+				expect(decryptedMetadata).to.equal(MESSAGE);
 			});
 
 			it("should revert if sender provided balance is not valid", async () => {
@@ -1034,7 +1237,9 @@ describe("EncryptedERC - Standalone", () => {
 				await expect(
 					encryptedERC
 						.connect(user.signer)
-						.transfer(
+						[
+							"transfer(address,uint256,((uint256[2],uint256[2][2],uint256[2]),uint256[32]),uint256[7])"
+						](
 							validParams.to,
 							0n,
 							validParams.proof,
@@ -1104,7 +1309,9 @@ describe("EncryptedERC - Standalone", () => {
 				await expect(
 					encryptedERC
 						.connect(users[0].signer)
-						.transfer(
+						[
+							"transfer(address,uint256,((uint256[2],uint256[2][2],uint256[2]),uint256[32]),uint256[7])"
+						](
 							nonRegisteredUser.signer.address,
 							0n,
 							validParams.proof,
@@ -1119,7 +1326,9 @@ describe("EncryptedERC - Standalone", () => {
 				await expect(
 					encryptedERC
 						.connect(nonRegisteredUser.signer)
-						.transfer(
+						[
+							"transfer(address,uint256,((uint256[2],uint256[2][2],uint256[2]),uint256[32]),uint256[7])"
+						](
 							users[0].signer.address,
 							0n,
 							validParams.proof,
@@ -1138,15 +1347,19 @@ describe("EncryptedERC - Standalone", () => {
 				_publicInputs[1] = validParams.proof.publicSignals[1];
 
 				await expect(
-					encryptedERC.connect(users[0].signer).transfer(
-						validParams.to,
-						0n,
-						{
-							proofPoints: _proof.proofPoints,
-							publicSignals: _publicInputs,
-						} as TransferProofStruct,
-						validParams.senderBalancePCT,
-					),
+					encryptedERC
+						.connect(users[0].signer)
+						[
+							"transfer(address,uint256,((uint256[2],uint256[2][2],uint256[2]),uint256[32]),uint256[7])"
+						](
+							validParams.to,
+							0n,
+							{
+								proofPoints: _proof.proofPoints,
+								publicSignals: _publicInputs,
+							} as TransferProofStruct,
+							validParams.senderBalancePCT,
+						),
 				).to.be.reverted;
 
 				// change [1]
@@ -1154,15 +1367,19 @@ describe("EncryptedERC - Standalone", () => {
 				_publicInputs[1] = "100";
 
 				await expect(
-					encryptedERC.connect(users[0].signer).transfer(
-						validParams.to,
-						0n,
-						{
-							proofPoints: _proof.proofPoints,
-							publicSignals: _publicInputs,
-						} as TransferProofStruct,
-						validParams.senderBalancePCT,
-					),
+					encryptedERC
+						.connect(users[0].signer)
+						[
+							"transfer(address,uint256,((uint256[2],uint256[2][2],uint256[2]),uint256[32]),uint256[7])"
+						](
+							validParams.to,
+							0n,
+							{
+								proofPoints: _proof.proofPoints,
+								publicSignals: _publicInputs,
+							} as TransferProofStruct,
+							validParams.senderBalancePCT,
+						),
 				).to.be.reverted;
 			});
 
@@ -1176,15 +1393,19 @@ describe("EncryptedERC - Standalone", () => {
 				_publicInputs[11] = validParams.proof.publicSignals[11];
 
 				await expect(
-					encryptedERC.connect(users[0].signer).transfer(
-						validParams.to,
-						0n,
-						{
-							proofPoints: _proof.proofPoints,
-							publicSignals: _publicInputs,
-						} as TransferProofStruct,
-						validParams.senderBalancePCT,
-					),
+					encryptedERC
+						.connect(users[0].signer)
+						[
+							"transfer(address,uint256,((uint256[2],uint256[2][2],uint256[2]),uint256[32]),uint256[7])"
+						](
+							validParams.to,
+							0n,
+							{
+								proofPoints: _proof.proofPoints,
+								publicSignals: _publicInputs,
+							} as TransferProofStruct,
+							validParams.senderBalancePCT,
+						),
 				).to.be.reverted;
 
 				// only change [11]
@@ -1192,15 +1413,19 @@ describe("EncryptedERC - Standalone", () => {
 				_publicInputs[11] = "100";
 
 				await expect(
-					encryptedERC.connect(users[0].signer).transfer(
-						validParams.to,
-						0n,
-						{
-							proofPoints: _proof.proofPoints,
-							publicSignals: _publicInputs,
-						},
-						validParams.senderBalancePCT,
-					),
+					encryptedERC
+						.connect(users[0].signer)
+						[
+							"transfer(address,uint256,((uint256[2],uint256[2][2],uint256[2]),uint256[32]),uint256[7])"
+						](
+							validParams.to,
+							0n,
+							{
+								proofPoints: _proof.proofPoints,
+								publicSignals: _publicInputs,
+							},
+							validParams.senderBalancePCT,
+						),
 				).to.be.reverted;
 			});
 
@@ -1216,15 +1441,19 @@ describe("EncryptedERC - Standalone", () => {
 				_publicInputs[24] = validParams.proof.publicSignals[24];
 
 				await expect(
-					encryptedERC.connect(owner).transfer(
-						validParams.to,
-						0n,
-						{
-							proofPoints: _proof.proofPoints,
-							publicSignals: _publicInputs,
-						} as TransferProofStruct,
-						validParams.senderBalancePCT,
-					),
+					encryptedERC
+						.connect(owner)
+						[
+							"transfer(address,uint256,((uint256[2],uint256[2][2],uint256[2]),uint256[32]),uint256[7])"
+						](
+							validParams.to,
+							0n,
+							{
+								proofPoints: _proof.proofPoints,
+								publicSignals: _publicInputs,
+							} as TransferProofStruct,
+							validParams.senderBalancePCT,
+						),
 				).to.be.reverted;
 
 				// only change [24]
@@ -1232,17 +1461,54 @@ describe("EncryptedERC - Standalone", () => {
 				_publicInputs[24] = "100";
 
 				await expect(
-					encryptedERC.connect(owner).transfer(
-						validParams.to,
-						0n,
-						{
-							proofPoints: _proof.proofPoints,
-							publicSignals: _publicInputs,
-						},
-						validParams.senderBalancePCT,
-					),
+					encryptedERC
+						.connect(owner)
+						[
+							"transfer(address,uint256,((uint256[2],uint256[2][2],uint256[2]),uint256[32]),uint256[7])"
+						](
+							validParams.to,
+							0n,
+							{
+								proofPoints: _proof.proofPoints,
+								publicSignals: _publicInputs,
+							},
+							validParams.senderBalancePCT,
+						),
 				).to.be.reverted;
 			});
+		});
+	});
+
+	describe("Private Message", () => {
+		it("should send and correctly decrypt private message", async () => {
+			const sender = users[1];
+			const receiver = users[4];
+
+			const message = "Private message testing!";
+			const encryptedMessage = encryptMetadata(receiver.publicKey, message);
+
+			const tx = await encryptedERC
+				.connect(sender.signer)
+				.sendEncryptedMetadata(receiver.signer.address, encryptedMessage);
+			await tx.wait();
+
+			const events = await encryptedERC.queryFilter(
+				encryptedERC.filters.PrivateMessage,
+				tx.blockNumber || 0,
+				tx.blockNumber || 0,
+			);
+
+			const emittedMetadata = events[0].args.metadata;
+			expect(emittedMetadata).to.not.be.equal("0x");
+			const messageType = emittedMetadata.messageType;
+			expect(messageType).to.equal("MESSAGE");
+
+			const encryptedMsgBytes = emittedMetadata.encryptedMsg;
+			const decryptedMetadata = decryptMetadata(
+				receiver.privateKey,
+				encryptedMsgBytes || "",
+			);
+			expect(decryptedMetadata).to.equal(message);
 		});
 	});
 });

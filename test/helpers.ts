@@ -18,11 +18,11 @@ import { decryptPoint, encryptMessage } from "../src/jub/jub";
 import type { AmountPCTStructOutput } from "../typechain-types/contracts/EncryptedERC";
 import { BabyJubJub__factory } from "../typechain-types/factories/contracts/libraries";
 import {
+	BurnVerifier__factory,
 	MintVerifier__factory,
 	RegistrationVerifier__factory,
 	TransferVerifier__factory,
 	WithdrawVerifier__factory,
-	BurnVerifier__factory,
 } from "../typechain-types/factories/contracts/prod";
 import {
 	BurnCircuitGroth16Verifier__factory,
@@ -41,6 +41,7 @@ import type { User } from "./user";
  * @returns mintVerifier - Mint verifier contract address
  * @returns withdrawVerifier - Withdraw verifier contract address
  * @returns transferVerifier - Transfer verifier contract address
+ * @returns burnVerifier - Burn verifier contract address
  */
 export const deployVerifiers = async (
 	signer: SignerWithAddress,
