@@ -1030,7 +1030,9 @@ contract EncryptedERC is
         (dust, tokenId) = _convertFrom(to, amount, tokenAddress, amountPCT);
 
         // Return dust to user
-        SafeERC20.safeTransfer(token, to, dust);
+        if (dust > 0) {
+            SafeERC20.safeTransfer(token, to, dust);
+        }
 
         // Emit deposit event
         emit Deposit(to, amount, dust, tokenId);

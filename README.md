@@ -10,20 +10,22 @@
 
 # Encrypted ERC-20 Protocol
 
-The Encrypted ERC-20 (eERC) standard enables secure and confidential token transfers on Avalanche blockchains. Leveraging zk-SNARKs and partially homomorphic encryption, the eERC protocol offers robust privacy without requiring protocol-level modifications or off-chain intermediaries.
+The Encrypted ERC-20 (eERC) standard, developed by [AvaCloud](https://avacloud.io), enables secure and confidential token transfers on Avalanche blockchains. Leveraging zk-SNARKs and partially homomorphic encryption, the eERC protocol offers robust privacy without requiring protocol-level modifications or off-chain intermediaries.
 AvaCloud API documentation can be found [here](https://docs.avacloud.io/encrypted-erc/getting-started/what-is-encrypted-erc)
 
 ## Key features
 
 - **Confidential Transactions**: User balances and transaction amounts remain completely hidden, ensuring financial confidentiality.
 
-- **Large Integers**: Efficiently handles large token amounts up to 252 bits (2^252), enabling flexible transactions.
+- **Large Integers**: Efficiently handles large token amounts up to 251 bits (2^251), providing greater flexibility.
 
 - **Client-Side Operations**: Users retain control, performing encryption, decryption, and zk-proof generation directly on their own devices.
 
 - **Fully On-chain Nature**: Operates entirely on-chain without the need for relayers or off-chain actors.
 
+
 - **Built-in Compliance**: Supports external and rotatable auditors, ensuring regulatory compliance.
+
 
 - **Dual-Mode Operation**: Supports both creating new private tokens and converting existing ERC-20 tokens their private versions.
 
@@ -32,6 +34,7 @@ AvaCloud API documentation can be found [here](https://docs.avacloud.io/encrypte
 - **Chain Agnostic**: Can be deployed on any EVM-compatible blockchain.
 
 - **(NEW) Encrypted Metadata**: Allows users to send arbitrary-length encrypted metadata along with transactions.
+
 
 ## Architecture
 
