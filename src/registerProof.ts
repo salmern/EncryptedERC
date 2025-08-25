@@ -9,7 +9,7 @@ export const generateRegistrationProof = async (
   publicKey: bigint[], // [x, y]
   chainId: bigint // Add this parameter
 ): Promise<CalldataRegistrationCircuitGroth16> => {
-  // Remove this line - don't fetch from local network
+  //don't fetch from local network
   // const network = await ethers.provider.getNetwork();
   // const chainId = network.chainId;
 
