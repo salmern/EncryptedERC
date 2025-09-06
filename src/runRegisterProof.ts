@@ -9,7 +9,7 @@ async function main() {
   const network = await provider.getNetwork();
   const chainId = network.chainId.toString();
   console.log("Chain ID:", chainId); // This should be 43113 for Avalanche testnet
-  const auditorAddress = "0x59c2C8Aa563d835F698543D6226c9c01ACf3a866";
+  const auditorAddress = "0x72F41e41b4c080989da452bc8B9f6858b66E712e";
   // Validate address
   const normalizedAddress = getAddress(auditorAddress);
   // Use a valid private key within the curve's subgroup order
